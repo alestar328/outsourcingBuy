@@ -228,17 +228,19 @@ const NAV_SECONDARY = []
 // ─── BOTTOM NAV (mobile) ──────────────────────────────────────────────────────
 function BottomNav({ active, onNav }) {
   return (
-    <div className="no-print" style={{ height: 56, flexShrink: 0, background: C.card, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'stretch', boxShadow: '0 -2px 8px rgba(0,0,0,0.08)' }}>
-      {NAV_PRIMARY.map(({ id, label, icon: Icon }) => {
-        const on = active === id
-        return (
-          <button key={id} onClick={() => onNav(id)}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', color: on ? C.primary : C.muted, borderTop: `2px solid ${on ? C.primary : 'transparent'}` }}>
-            <Icon size={18} />
-            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 9, fontWeight: on ? 600 : 400 }}>{label}</span>
-          </button>
-        )
-      })}
+    <div className="no-print" style={{ flexShrink: 0, background: C.card, borderTop: `1px solid ${C.border}`, boxShadow: '0 -2px 8px rgba(0,0,0,0.08)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div style={{ height: 56, display: 'flex', alignItems: 'stretch' }}>
+        {NAV_PRIMARY.map(({ id, label, icon: Icon }) => {
+          const on = active === id
+          return (
+            <button key={id} onClick={() => onNav(id)}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', color: on ? C.primary : C.muted, borderTop: `2px solid ${on ? C.primary : 'transparent'}` }}>
+              <Icon size={18} />
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 9, fontWeight: on ? 600 : 400 }}>{label}</span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -847,7 +849,7 @@ export default function App() {
   const { comp: View, title } = VIEWS[view]
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: C.bg, fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif' }}>
+    <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: C.bg, fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif' }}>
       {!isMobile && <Sidebar active={view} onNav={setView} />}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minWidth: 0 }}>
         <Topbar title={title} isMobile={isMobile} viewMode={viewMode} onToggleViewMode={toggleViewMode} />
