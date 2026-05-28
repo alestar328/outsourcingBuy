@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, Fragment } from 'react'
 import Solped from './Solped.jsx'
 import OrdenCompra from './OrdenCompra.jsx'
 import {
-  AreaChart, Area, BarChart, Bar,
+  AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
 import {
@@ -22,12 +22,12 @@ const C = {
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const spendData = [
-  { mes: 'Jun', gasto: 1820, ahorro: 68 }, { mes: 'Jul', gasto: 2140, ahorro: 95 },
-  { mes: 'Ago', gasto: 1950, ahorro: 88 }, { mes: 'Set', gasto: 2380, ahorro: 124 },
-  { mes: 'Oct', gasto: 2100, ahorro: 102 }, { mes: 'Nov', gasto: 2560, ahorro: 138 },
-  { mes: 'Dic', gasto: 2200, ahorro: 115 }, { mes: 'Ene', gasto: 1980, ahorro: 97 },
-  { mes: 'Feb', gasto: 2340, ahorro: 131 }, { mes: 'Mar', gasto: 2680, ahorro: 156 },
-  { mes: 'Abr', gasto: 2450, ahorro: 142 }, { mes: 'May', gasto: 2890, ahorro: 169 },
+  { mes: 'Jun', gasto: 1820 }, { mes: 'Jul', gasto: 2140 },
+  { mes: 'Ago', gasto: 1950 }, { mes: 'Set', gasto: 2380 },
+  { mes: 'Oct', gasto: 2100 }, { mes: 'Nov', gasto: 2560 },
+  { mes: 'Dic', gasto: 2200 }, { mes: 'Ene', gasto: 1980 },
+  { mes: 'Feb', gasto: 2340 }, { mes: 'Mar', gasto: 2680 },
+  { mes: 'Abr', gasto: 2450 }, { mes: 'May', gasto: 2890 },
 ]
 const recentOCs = [
   { oc: 'OC-2025-0341', proveedor: 'Pirotec Andina S.A.',     cat: 'Explosivos',    monto: 284000, estado: 'Aprobada' },
@@ -83,13 +83,6 @@ const acuerdos = {
     { nombre: 'Acero Estructural',       proveedor: 'Siderúrgica del Sur S.A.', cat: 'Materiales', valor: 180000, vence: '30/04/2025', ejec: 100 },
   ],
 }
-const ahorroComp = [
-  { name: 'Explosivos ANFO', acuerdo: 1800, spot: 2250 },
-  { name: 'Reactivos Cu',    acuerdo: 2200, spot: 2650 },
-  { name: 'Repuestos Mina',  acuerdo: 3100, spot: 3800 },
-  { name: 'EPP Estándar',    acuerdo: 420,  spot: 510  },
-  { name: 'Combustibles',    acuerdo: 890,  spot: 1050 },
-]
 // ─── UTILS ────────────────────────────────────────────────────────────────────
 const fmt = (n) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
@@ -329,13 +322,11 @@ function Dashboard({ isMobile }) {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: P, display: 'flex', flexDirection: 'column', gap }}>
       {/* KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? 10 : 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: isMobile ? 10 : 16 }}>
         {[
-          { label: 'Ahorro Generado YTD', value: 'US$ 1,247,800', sub: 'meta US$ 1,500,000', pct: 83, color: C.primary },
-          { label: 'Compras Bajo Acuerdo', value: '73%',           sub: 'meta: 80% del gasto', pct: 91, color: C.primary },
-          { label: 'OTIF Proveedores',     value: '88.4%',         sub: 'últimos 90 días',     pct: 93, color: C.gold   },
-          null,
-        ].map((k, i) => k ? (
+          { label: 'Compras Bajo Acuerdo', value: '73%',   sub: 'meta: 80% del gasto', pct: 91, color: C.primary },
+          { label: 'OTIF Proveedores',     value: '88.4%', sub: 'últimos 90 días',     pct: 93, color: C.gold   },
+        ].map((k, i) => (
           <Card key={i} className="p-4">
             <div style={{ fontFamily: 'Inter, sans-serif', fontSize: isMobile ? 9 : 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{k.label}</div>
             <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: isMobile ? 18 : 24, color: C.text, margin: '6px 0' }}>{k.value}</div>
@@ -345,37 +336,33 @@ function Dashboard({ isMobile }) {
               <span style={{ color: k.color }}>{k.pct}% de meta</span>
             </div>
           </Card>
-        ) : (
-          <Card key={i} className="p-4">
+        )).concat([
+          <Card key="c" className="p-4">
             <div style={{ fontFamily: 'Inter, sans-serif', fontSize: isMobile ? 9 : 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Contratos Activos</div>
             <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: isMobile ? 22 : 28, color: C.text, margin: '6px 0' }}>42</div>
             <Badge>Pendiente</Badge>
             <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.warn, marginLeft: 6 }}>3 vencen en 30d</span>
           </Card>
-        ))}
+        ])}
       </div>
 
       {/* Area chart */}
       <Card className="p-5">
         <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
-          Gasto Mensual vs. Ahorro Generado (US$ miles)
+          Gasto Mensual (US$ miles)
         </div>
         <ResponsiveContainer width="100%" height={isMobile ? 150 : 210}>
           <AreaChart data={spendData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="gG" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={C.info} stopOpacity={0.3} /><stop offset="95%" stopColor={C.info} stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={C.primary} stopOpacity={0.4} /><stop offset="95%" stopColor={C.primary} stopOpacity={0} />
+                <stop offset="5%" stopColor={C.primary} stopOpacity={0.25} /><stop offset="95%" stopColor={C.primary} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
             <XAxis dataKey="mes" tick={{ fill: C.muted, fontSize: 10, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: C.muted, fontSize: 10, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
             <Tooltip content={<TooltipContent />} />
-            <Area type="monotone" dataKey="gasto"  name="Gasto"  stroke={C.info}    fill="url(#gG)" strokeWidth={2} />
-            <Area type="monotone" dataKey="ahorro" name="Ahorro" stroke={C.primary} fill="url(#gA)" strokeWidth={2} />
+            <Area type="monotone" dataKey="gasto" name="Gasto" stroke={C.primary} fill="url(#gG)" strokeWidth={2} />
           </AreaChart>
         </ResponsiveContainer>
       </Card>
@@ -802,21 +789,6 @@ function Acuerdos({ isMobile }) {
         ))}
       </div>
 
-      <Card className="p-5">
-        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
-          Precio Acuerdo vs. Precio Spot — Top 5 Contratos (US$ miles)
-        </div>
-        <ResponsiveContainer width="100%" height={isMobile ? 180 : 200}>
-          <BarChart data={ahorroComp} layout="vertical" margin={{ left: 10, right: 30 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.border} horizontal={false} />
-            <XAxis type="number" tick={{ fill: C.muted, fontSize: 10, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
-            <YAxis dataKey="name" type="category" tick={{ fill: C.muted, fontSize: isMobile ? 9 : 11, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} width={isMobile ? 90 : 130} />
-            <Tooltip formatter={(v, n) => [`US$ ${v}K`, n === 'acuerdo' ? 'Precio Acuerdo' : 'Precio Spot']} contentStyle={{ background: C.card, border: `1px solid ${C.border}`, fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.text }} />
-            <Bar dataKey="spot"    name="Spot"    fill={`${C.danger}50`} radius={[0, 4, 4, 0]} />
-            <Bar dataKey="acuerdo" name="Acuerdo" fill={C.primary}       radius={[0, 4, 4, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
     </div>
   )
 }
