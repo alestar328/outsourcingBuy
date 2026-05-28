@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, Fragment } from 'react'
 import Solped from './Solped.jsx'
 import OrdenCompra from './OrdenCompra.jsx'
 import {
-  AreaChart, Area,
+  BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
 import {
@@ -21,26 +21,26 @@ const C = {
 }
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
-const spendData = [
-  { mes: 'Jun', gasto: 1820 }, { mes: 'Jul', gasto: 2140 },
-  { mes: 'Ago', gasto: 1950 }, { mes: 'Set', gasto: 2380 },
-  { mes: 'Oct', gasto: 2100 }, { mes: 'Nov', gasto: 2560 },
-  { mes: 'Dic', gasto: 2200 }, { mes: 'Ene', gasto: 1980 },
-  { mes: 'Feb', gasto: 2340 }, { mes: 'Mar', gasto: 2680 },
-  { mes: 'Abr', gasto: 2450 }, { mes: 'May', gasto: 2890 },
+const monthlyData = [
+  { mes: 'Dic', solpeds: 28, ocs: 24 },
+  { mes: 'Ene', solpeds: 31, ocs: 29 },
+  { mes: 'Feb', solpeds: 26, ocs: 25 },
+  { mes: 'Mar', solpeds: 34, ocs: 30 },
+  { mes: 'Abr', solpeds: 29, ocs: 28 },
+  { mes: 'May', solpeds: 38, ocs: 34 },
 ]
-const recentOCs = [
-  { oc: 'OC-2025-0341', proveedor: 'Pirotec Andina S.A.',     cat: 'Explosivos',    monto: 284000, estado: 'Aprobada' },
-  { oc: 'OC-2025-0340', proveedor: 'Chemindus Perú S.A.',     cat: 'Reactivos',     monto: 156800, estado: 'Pendiente' },
-  { oc: 'OC-2025-0339', proveedor: 'Maquinex del Perú S.A.',  cat: 'Repuestos OEM', monto: 98400,  estado: 'Aprobada' },
-  { oc: 'OC-2025-0338', proveedor: 'GasAndes S.A.C.',         cat: 'Combustibles',  monto: 312000, estado: 'Urgente' },
-  { oc: 'OC-2025-0337', proveedor: 'SegurPro Perú S.A.',      cat: 'EPP',           monto: 42600,  estado: 'Aprobada' },
+const recentActivity = [
+  { oc: 'OC-2025-0341', solped: 'SP-2025-0521', proveedor: 'Pirotec Andina S.A.',      estado: 'En tránsito', entrega: '02/06/2025', dias: 5  },
+  { oc: 'OC-2025-0340', solped: 'SP-2025-0519', proveedor: 'Chemindus Perú S.A.',      estado: 'Emitida',     entrega: '10/06/2025', dias: 13 },
+  { oc: 'OC-2025-0339', solped: 'SP-2025-0515', proveedor: 'Maquinex del Perú S.A.',  estado: 'Retrasada',   entrega: '25/05/2025', dias: -3 },
+  { oc: 'OC-2025-0338', solped: 'SP-2025-0514', proveedor: 'GasAndes S.A.C.',          estado: 'En tránsito', entrega: '30/05/2025', dias: 2  },
+  { oc: 'OC-2025-0337', solped: 'SP-2025-0510', proveedor: 'SegurPro Perú S.A.',       estado: 'Entregada',   entrega: '20/05/2025', dias: 0  },
 ]
 const alertas = [
-  { tipo: 'warn',    icon: FileText,    msg: 'Contrato EPP Seguridad vence en 18 días',          sub: 'SegurPro Perú · Marco #FA-2025-008' },
-  { tipo: 'danger',  icon: Package,     msg: 'Stock crítico: Cianuro de Sodio — 12 días',         sub: 'Unidad Cerro Azul · Reorden sugerido: 48 t' },
-  { tipo: 'warn',    icon: Users,       msg: 'Evaluación anual pendiente — Maquinex del Perú',    sub: 'Última evaluación: Nov 2024 · Score: 74' },
-  { tipo: 'success', icon: CheckCircle, msg: 'Acuerdo marco Explosivos renovado',                 sub: 'Pirotec Andina · Vigente hasta May 2026' },
+  { tipo: 'danger',  icon: Package,      msg: '2 OCs con entrega vencida',                      sub: 'OC-2025-0339 · OC-2025-0335 — Seguimiento urgente' },
+  { tipo: 'warn',    icon: Calendar,     msg: '8 entregas previstas en los próximos 7 días',    sub: 'Confirmar despacho con proveedores' },
+  { tipo: 'warn',    icon: ClipboardList,msg: '12 SOLPEDs pendientes de procesar',              sub: 'Backlog acumulado — 3 con prioridad alta' },
+  { tipo: 'success', icon: CheckCircle,  msg: '16 OCs entregadas este mes',                     sub: 'Tasa de cumplimiento: 89% — Meta: 90%' },
 ]
 const proveedoresStatic = [
   { id: 1, nombre: 'Pirotec Andina S.A.',      ruc: '20601234001', cats: ['Explosivos', 'Insumos'],       score: 92, estado: 'Homologado',  otif: 96 },
@@ -317,96 +317,160 @@ function Topbar({ title, isMobile, viewMode, onToggleViewMode }) {
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 function Dashboard({ isMobile }) {
-  const P = isMobile ? '14px 14px' : 24
-  const gap = isMobile ? 12 : 20
+  const P   = isMobile ? '14px 14px' : 24
+  const gap = isMobile ? 12 : 16
+
+  const kpis = [
+    { label: 'SOLPEDs pendientes',  value: '12', sub: 'sin procesar',      icon: ClipboardList, color: C.warn    },
+    { label: 'OCs activas',         value: '34', sub: 'con proveedores',   icon: ShoppingCart,  color: C.primary },
+    { label: 'Entregas esta semana',value:  '8', sub: 'próximos 7 días',   icon: Calendar,      color: C.info    },
+    { label: 'OCs retrasadas',      value:  '2', sub: 'requieren acción',  icon: Package,       color: C.danger  },
+  ]
+
+  const pipeline = [
+    { label: 'SOLPED pendiente', count: 12, color: C.warn    },
+    { label: 'OC emitida',       count: 18, color: C.primary },
+    { label: 'En tránsito',      count: 16, color: C.info    },
+    { label: 'Entregada (mes)',   count: 16, color: C.success },
+  ]
+
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: P, display: 'flex', flexDirection: 'column', gap }}>
-      {/* KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: isMobile ? 10 : 16 }}>
-        {[
-          { label: 'Compras Bajo Acuerdo', value: '73%',   sub: 'meta: 80% del gasto', pct: 91, color: C.primary },
-          { label: 'OTIF Proveedores',     value: '88.4%', sub: 'últimos 90 días',     pct: 93, color: C.gold   },
-        ].map((k, i) => (
-          <Card key={i} className="p-4">
-            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: isMobile ? 9 : 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{k.label}</div>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: isMobile ? 18 : 24, color: C.text, margin: '6px 0' }}>{k.value}</div>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginBottom: 8 }}>{k.sub}</div>
-            <ScoreBar value={k.pct} />
-            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, marginTop: 4 }}>
-              <span style={{ color: k.color }}>{k.pct}% de meta</span>
-            </div>
-          </Card>
-        )).concat([
-          <Card key="c" className="p-4">
-            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: isMobile ? 9 : 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Contratos Activos</div>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: isMobile ? 22 : 28, color: C.text, margin: '6px 0' }}>42</div>
-            <Badge>Pendiente</Badge>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.warn, marginLeft: 6 }}>3 vencen en 30d</span>
-          </Card>
-        ])}
+
+      {/* ── KPI cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: isMobile ? 10 : 14, ...(!isMobile && { gridTemplateColumns: 'repeat(4, 1fr)' }) }}>
+        {kpis.map(k => {
+          const Icon = k.icon
+          return (
+            <Card key={k.label} className="p-4">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: isMobile ? 9 : 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', lineHeight: 1.4 }}>{k.label}</span>
+                <div style={{ padding: 6, borderRadius: 7, background: `${k.color}12`, flexShrink: 0, marginLeft: 6 }}>
+                  <Icon size={14} style={{ color: k.color, display: 'block' }} />
+                </div>
+              </div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: isMobile ? 28 : 34, color: k.color, marginTop: 8, lineHeight: 1 }}>{k.value}</div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginTop: 5 }}>{k.sub}</div>
+            </Card>
+          )
+        })}
       </div>
 
-      {/* Area chart */}
-      <Card className="p-5">
-        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
-          Gasto Mensual (US$ miles)
-        </div>
-        <ResponsiveContainer width="100%" height={isMobile ? 150 : 210}>
-          <AreaChart data={spendData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="gG" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={C.primary} stopOpacity={0.25} /><stop offset="95%" stopColor={C.primary} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-            <XAxis dataKey="mes" tick={{ fill: C.muted, fontSize: 10, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: C.muted, fontSize: 10, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
-            <Tooltip content={<TooltipContent />} />
-            <Area type="monotone" dataKey="gasto" name="Gasto" stroke={C.primary} fill="url(#gG)" strokeWidth={2} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </Card>
+      {/* ── Chart + Pipeline ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 260px', gap: 14 }}>
 
-      {/* Bottom row */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: 16 }}>
+        {/* Bar chart */}
+        <Card className="p-5">
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+            Evolución mensual — SOLPEDs recibidas vs OCs emitidas
+          </div>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+            {[{ label: 'SOLPEDs', color: `${C.primary}55` }, { label: 'OCs emitidas', color: C.primary }].map(l => (
+              <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: l.color }} />
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>{l.label}</span>
+              </div>
+            ))}
+          </div>
+          <ResponsiveContainer width="100%" height={isMobile ? 140 : 190}>
+            <BarChart data={monthlyData} margin={{ top: 0, right: 6, left: -20, bottom: 0 }} barCategoryGap="30%">
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false} />
+              <XAxis dataKey="mes" tick={{ fill: C.muted, fontSize: 10, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: C.muted, fontSize: 10, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
+              <Tooltip
+                formatter={(v, n) => [v, n === 'solpeds' ? 'SOLPEDs' : 'OCs emitidas']}
+                contentStyle={{ background: C.card, border: `1px solid ${C.border}`, fontFamily: 'Inter, sans-serif', fontSize: 11, borderRadius: 6, color: C.text }}
+              />
+              <Bar dataKey="solpeds" fill={`${C.primary}55`} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="ocs"     fill={C.primary}         radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        {/* Pipeline */}
+        <Card className="p-5">
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+            Pipeline actual
+          </div>
+          {isMobile ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {pipeline.map(s => (
+                <div key={s.label} style={{ padding: '10px 12px', borderRadius: 8, background: `${s.color}10`, border: `1px solid ${s.color}30` }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 22, color: s.color, lineHeight: 1 }}>{s.count}</div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginTop: 4 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {pipeline.map((s, i) => (
+                <div key={s.label}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 7, background: `${s.color}08`, border: `1px solid ${s.color}25` }}>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 20, color: s.color, minWidth: 32, lineHeight: 1 }}>{s.count}</span>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.text }}>{s.label}</span>
+                  </div>
+                  {i < pipeline.length - 1 && (
+                    <div style={{ textAlign: 'center', color: C.border, fontSize: 16, lineHeight: '18px' }}>↓</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* ── Activity table + Alerts ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: 14 }}>
         <Card className="p-4" style={{ overflowX: 'auto' }}>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Últimas Órdenes de Compra</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+            Seguimiento de OCs activas
+          </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Inter, sans-serif', fontSize: 12 }}>
             <thead>
               <tr style={{ color: C.muted, borderBottom: `1px solid ${C.border}` }}>
-                <th style={{ padding: '0 10px 8px 0', textAlign: 'left', fontWeight: 500 }}>N° OC</th>
+                <th style={{ padding: '0 10px 8px 0', textAlign: 'left', fontWeight: 500 }}>OC / SOLPED</th>
                 <th style={{ padding: '0 10px 8px 0', textAlign: 'left', fontWeight: 500 }}>Proveedor</th>
-                {!isMobile && <th style={{ padding: '0 10px 8px 0', textAlign: 'left', fontWeight: 500 }}>Monto</th>}
-                <th style={{ padding: '0 0 8px 0', textAlign: 'left', fontWeight: 500 }}>Estado</th>
+                <th style={{ padding: '0 10px 8px 0', textAlign: 'left', fontWeight: 500 }}>Estado</th>
+                {!isMobile && <th style={{ padding: '0 10px 8px 0', textAlign: 'left', fontWeight: 500 }}>F. Entrega</th>}
+                <th style={{ padding: '0 0 8px 0', textAlign: 'right', fontWeight: 500 }}>Días</th>
               </tr>
             </thead>
             <tbody>
-              {recentOCs.map((r, i) => (
-                <tr key={i} style={{ borderBottom: `1px solid ${C.border}40` }}>
-                  <td style={{ padding: '9px 10px 9px 0', color: C.primary, whiteSpace: 'nowrap', fontSize: isMobile ? 11 : 12 }}>{r.oc}</td>
-                  <td style={{ padding: '9px 10px 9px 0', color: C.text }}>
-                    <div>{r.proveedor}</div>
-                    {isMobile && <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{fmt(r.monto)}</div>}
-                  </td>
-                  {!isMobile && <td style={{ padding: '9px 10px 9px 0', color: C.text, fontWeight: 600 }}>{fmt(r.monto)}</td>}
-                  <td style={{ padding: '9px 0 9px 0' }}><Badge>{r.estado}</Badge></td>
-                </tr>
-              ))}
+              {recentActivity.map((r, i) => {
+                const dc = r.dias < 0 ? C.danger : r.dias <= 3 ? C.warn : C.success
+                return (
+                  <tr key={i} style={{ borderBottom: `1px solid ${C.border}40` }}>
+                    <td style={{ padding: '9px 10px 9px 0' }}>
+                      <div style={{ color: C.primary, fontWeight: 600, fontSize: isMobile ? 11 : 12 }}>{r.oc}</div>
+                      <div style={{ color: C.muted, fontSize: 10, marginTop: 1 }}>{r.solped}</div>
+                    </td>
+                    <td style={{ padding: '9px 10px 9px 0', color: C.text, fontSize: isMobile ? 11 : 12 }}>{r.proveedor}</td>
+                    <td style={{ padding: '9px 10px 9px 0' }}><Badge>{r.estado}</Badge></td>
+                    {!isMobile && <td style={{ padding: '9px 10px 9px 0', color: C.muted, fontSize: 11 }}>{r.entrega}</td>}
+                    <td style={{ padding: '9px 0 9px 0', textAlign: 'right', fontWeight: 600, color: dc, fontSize: 12, whiteSpace: 'nowrap' }}>
+                      {r.dias < 0 ? `${Math.abs(r.dias)}d tarde` : r.dias === 0 ? '—' : `${r.dias}d`}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </Card>
+
         <Card className="p-4">
-          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Alertas Activas</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Alertas</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {alertas.map((a, i) => {
               const Icon = a.icon
-              const color = a.tipo === 'danger' ? C.danger : a.tipo === 'warn' ? C.warn : C.primary
+              const color = a.tipo === 'danger' ? C.danger : a.tipo === 'warn' ? C.warn : a.tipo === 'success' ? C.success : C.primary
               return (
-                <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: 12, borderBottom: i < alertas.length - 1 ? `1px solid ${C.border}50` : 'none' }}>
-                  <Icon size={14} style={{ color, flexShrink: 0, marginTop: 2 }} />
+                <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: 12, borderBottom: i < alertas.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 6, background: `${color}12`, border: `1px solid ${color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon size={13} style={{ color }} />
+                  </div>
                   <div>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: C.text }}>{a.msg}</div>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginTop: 2 }}>{a.sub}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.3 }}>{a.msg}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginTop: 3 }}>{a.sub}</div>
                   </div>
                 </div>
               )
