@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import Solped from './Solped.jsx'
 import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
 import {
-  LayoutDashboard, Users, ShoppingCart, FileText, TrendingUp, Package,
-  Bell, Plus, Eye, X, Calendar, Zap, BarChart2, CheckCircle, Search,
+  LayoutDashboard, Users, ShoppingCart, FileText, Package,
+  Bell, Plus, Eye, X, Calendar, CheckCircle, Search,
   ClipboardList, Monitor, Smartphone, MoreHorizontal,
 } from 'lucide-react'
 
@@ -104,37 +104,6 @@ const ahorroComp = [
   { name: 'EPP Estándar',    acuerdo: 420,  spot: 510  },
   { name: 'Combustibles',    acuerdo: 890,  spot: 1050 },
 ]
-const gastoCat = [
-  { name: 'Explosivos',   value: 28, color: '#00C896' },
-  { name: 'Reactivos',    value: 22, color: '#3B82F6' },
-  { name: 'Repuestos OEM',value: 19, color: '#C9A84C' },
-  { name: 'EPP',          value: 12, color: '#8B5CF6' },
-  { name: 'Combustibles', value: 11, color: '#F59E0B' },
-  { name: 'Otros',        value: 8,  color: '#6B7280' },
-]
-const paretoData = [
-  { proveedor: 'Komatsu Mitsui',    gasto: 3200, pct: 20.3, acum: 20.3, acuerdo: 88 },
-  { proveedor: 'Famesa Explosivos', gasto: 2400, pct: 15.2, acum: 35.5, acuerdo: 95 },
-  { proveedor: 'Orica Mining',      gasto: 1800, pct: 11.4, acum: 46.9, acuerdo: 91 },
-  { proveedor: 'Air Products',      gasto: 1440, pct: 9.1,  acum: 56.0, acuerdo: 100 },
-  { proveedor: 'Bridgestone',       gasto: 960,  pct: 6.1,  acum: 62.1, acuerdo: 84 },
-  { proveedor: 'Air Liquide',       gasto: 840,  pct: 5.3,  acum: 67.4, acuerdo: 76 },
-  { proveedor: 'Mobil Perú',        gasto: 720,  pct: 4.6,  acum: 72.0, acuerdo: 72 },
-  { proveedor: 'SKF del Perú',      gasto: 560,  pct: 3.6,  acum: 75.6, acuerdo: 68 },
-  { proveedor: 'MSA Safety',        gasto: 480,  pct: 3.0,  acum: 78.6, acuerdo: 100 },
-  { proveedor: 'Merck Perú',        gasto: 320,  pct: 2.0,  acum: 80.6, acuerdo: 100 },
-]
-const inventario = [
-  { codigo: 'INV-00234', desc: 'ANFO Pesado 94/6',           cat: 'Explosivos',  stock: 84,    unidad: 'TM',  min: 60,    max: 200,   estado: 'Normal', valor: 151200, mov: 12 },
-  { codigo: 'INV-00189', desc: 'Cianuro de Sodio',           cat: 'Reactivos',   stock: 18,    unidad: 'TM',  min: 40,    max: 120,   estado: 'Crítico', valor: 162000, mov: 28 },
-  { codigo: 'INV-00312', desc: 'Aceite Hidráulico ISO 46',   cat: 'Lubricantes', stock: 2400,  unidad: 'L',   min: 1000,  max: 5000,  estado: 'Normal', valor: 19200,  mov: 8  },
-  { codigo: 'INV-00445', desc: 'Correa transportadora B2000',cat: 'Repuestos',   stock: 3,     unidad: 'UND', min: 2,     max: 6,     estado: 'Bajo',   valor: 24000,  mov: 2  },
-  { codigo: 'INV-00156', desc: 'Casco Minero 3M H700',       cat: 'EPP',         stock: 340,   unidad: 'UND', min: 100,   max: 500,   estado: 'Normal', valor: 27200,  mov: 45 },
-  { codigo: 'INV-00078', desc: 'Rodamiento SKF 23040',       cat: 'Repuestos',   stock: 12,    unidad: 'UND', min: 4,     max: 20,    estado: 'Normal', valor: 19200,  mov: 3  },
-  { codigo: 'INV-00567', desc: 'Xantato Isopropílico',       cat: 'Reactivos',   stock: 2,     unidad: 'TM',  min: 8,     max: 25,    estado: 'Crítico', valor: 14000,  mov: 15 },
-  { codigo: 'INV-00290', desc: 'Mecha de seguridad',         cat: 'Explosivos',  stock: 45000, unidad: 'M',   min: 20000, max: 80000, estado: 'Normal', valor: 22500,  mov: 6  },
-]
-
 // ─── UTILS ────────────────────────────────────────────────────────────────────
 const fmt = (n) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
@@ -263,55 +232,30 @@ function validateProvForm(form) {
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
 const NAV = [
-  { id: 'dashboard',   label: 'Dashboard',        icon: LayoutDashboard },
-  { id: 'solped',      label: 'SOLPEDs',           icon: ClipboardList   },
-  { id: 'proveedores', label: 'Proveedores',       icon: Users           },
-  { id: 'ordenes',     label: 'Órdenes',           icon: ShoppingCart    },
-  { id: 'acuerdos',    label: 'Acuerdos',          icon: FileText        },
-  { id: 'spend',       label: 'Spend',             icon: TrendingUp      },
-  { id: 'inventario',  label: 'Inventario',        icon: Package         },
+  { id: 'dashboard',   label: 'Dashboard',  icon: LayoutDashboard },
+  { id: 'solped',      label: 'SOLPEDs',    icon: ClipboardList   },
+  { id: 'proveedores', label: 'Proveedores', icon: Users           },
+  { id: 'ordenes',     label: 'Órdenes',    icon: ShoppingCart    },
+  { id: 'acuerdos',    label: 'Acuerdos',   icon: FileText        },
 ]
-const NAV_PRIMARY   = NAV.slice(0, 4)
-const NAV_SECONDARY = NAV.slice(4)
+const NAV_PRIMARY   = NAV
+const NAV_SECONDARY = []
 
 // ─── BOTTOM NAV (mobile) ──────────────────────────────────────────────────────
 function BottomNav({ active, onNav }) {
-  const [showMore, setShowMore] = useState(false)
-  const isSecActive = NAV_SECONDARY.some(n => n.id === active)
-
   return (
-    <>
-      {showMore && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setShowMore(false)}>
-          <div style={{ position: 'absolute', bottom: 56, left: 0, right: 0, background: C.card, borderTop: `1px solid ${C.border}`, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}
-            onClick={e => e.stopPropagation()}>
-            {NAV_SECONDARY.map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => { onNav(id); setShowMore(false) }}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 8, background: active === id ? `${C.primary}18` : 'transparent', color: active === id ? C.primary : C.text, border: 'none', cursor: 'pointer', fontFamily: 'IBM Plex Mono', fontSize: 13 }}>
-                <Icon size={18} /> {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 56, background: C.card, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'stretch', zIndex: 200 }}>
-        {NAV_PRIMARY.map(({ id, label, icon: Icon }) => {
-          const on = active === id
-          return (
-            <button key={id} onClick={() => { onNav(id); setShowMore(false) }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', color: on ? C.primary : C.muted, borderTop: `2px solid ${on ? C.primary : 'transparent'}` }}>
-              <Icon size={18} />
-              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, fontWeight: on ? 600 : 400 }}>{label}</span>
-            </button>
-          )
-        })}
-        <button onClick={() => setShowMore(v => !v)}
-          style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', color: (showMore || isSecActive) ? C.primary : C.muted, borderTop: `2px solid ${showMore || isSecActive ? C.primary : 'transparent'}` }}>
-          <MoreHorizontal size={18} />
-          <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, fontWeight: 400 }}>Más</span>
-        </button>
-      </div>
-    </>
+    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 56, background: C.card, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'stretch', zIndex: 200 }}>
+      {NAV_PRIMARY.map(({ id, label, icon: Icon }) => {
+        const on = active === id
+        return (
+          <button key={id} onClick={() => onNav(id)}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', color: on ? C.primary : C.muted, borderTop: `2px solid ${on ? C.primary : 'transparent'}` }}>
+            <Icon size={18} />
+            <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, fontWeight: on ? 600 : 400 }}>{label}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -998,211 +942,13 @@ function Acuerdos({ isMobile }) {
   )
 }
 
-// ─── SPEND ANALYSIS ──────────────────────────────────────────────────────────
-function Spend({ isMobile }) {
-  const [periodo, setPeriodo] = useState('YTD')
-  const [unidad,  setUnidad]  = useState('Todas')
-  const R = Math.PI / 180
-  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value }) => {
-    if (value < 10) return null
-    const r = innerRadius + (outerRadius - innerRadius) * 0.5
-    return <text x={cx + r * Math.cos(-midAngle * R)} y={cy + r * Math.sin(-midAngle * R)} fill={C.text} textAnchor="middle" dominantBaseline="central" fontSize={10} fontFamily="IBM Plex Mono" fontWeight="600">{value}%</text>
-  }
-  return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 14px' : 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: isMobile ? 'auto' : 'visible' }}>
-        {['YTD', 'Q1', 'Q2', 'Q3', 'Q4'].map(p => (
-          <button key={p} onClick={() => setPeriodo(p)}
-            style={{ padding: '6px 12px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: periodo === p ? `${C.primary}20` : C.card, color: periodo === p ? C.primary : C.muted, border: `1px solid ${periodo === p ? C.primary : C.border}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {p}
-          </button>
-        ))}
-        {!isMobile && ['Todas', 'Orcopampa', 'Uchucchacua', 'Tambomayo'].map(u => (
-          <button key={u} onClick={() => setUnidad(u)}
-            style={{ padding: '6px 14px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: unidad === u ? `${C.gold}20` : C.card, color: unidad === u ? C.gold : C.muted, border: `1px solid ${unidad === u ? C.gold : C.border}`, cursor: 'pointer' }}>
-            {u}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '380px 1fr', gap: 16 }}>
-        <Card className="p-5">
-          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Gasto por Categoría</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-            <ResponsiveContainer width={isMobile ? '100%' : 180} height={175}>
-              <PieChart>
-                <Pie data={gastoCat} cx={isMobile ? '50%' : 85} cy={82} innerRadius={46} outerRadius={78} dataKey="value" labelLine={false} label={renderLabel}>
-                  {gastoCat.map((e, i) => <Cell key={i} fill={e.color} />)}
-                </Pie>
-                <Tooltip formatter={(v, n) => [`${v}%`, n]} contentStyle={{ background: C.card, border: `1px solid ${C.border}`, fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.text }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-              {gastoCat.map((g, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 2, background: g.color, flexShrink: 0 }} />
-                  <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, flex: 1 }}>{g.name}</span>
-                  <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, color: C.text }}>{g.value}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4" style={{ overflowX: 'auto' }}>
-          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Top 10 Proveedores — Análisis Pareto</div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'IBM Plex Mono', fontSize: 12, minWidth: 440 }}>
-            <thead>
-              <tr style={{ color: C.muted, borderBottom: `1px solid ${C.border}` }}>
-                {['Proveedor', 'US$K', '% Total', '% Acum.', '% Marco'].map(h => <th key={h} style={{ padding: '0 12px 8px 0', textAlign: 'left', fontWeight: 500 }}>{h}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {paretoData.map((p, i) => {
-                const is80 = p.acum <= 80.6 && (i === paretoData.length - 1 || paretoData[i + 1]?.acum > 80.6)
-                return (
-                  <Fragment key={i}>
-                    <tr style={{ borderBottom: `1px solid ${C.border}40`, color: C.text }}>
-                      <td style={{ padding: '9px 12px 9px 0' }}>{p.proveedor}</td>
-                      <td style={{ padding: '9px 12px 9px 0', fontWeight: 600 }}>{p.gasto}</td>
-                      <td style={{ padding: '9px 12px 9px 0', color: C.muted }}>{p.pct}%</td>
-                      <td style={{ padding: '9px 12px 9px 0', color: p.acum <= 80 ? C.primary : C.muted }}>{p.acum}%</td>
-                      <td style={{ padding: '9px 0 9px 0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ width: 48, background: C.border, borderRadius: 4, height: 4 }}>
-                            <div style={{ height: 4, borderRadius: 4, background: p.acuerdo >= 80 ? C.primary : C.gold, width: `${p.acuerdo}%` }} />
-                          </div>
-                          <span style={{ color: p.acuerdo >= 80 ? C.primary : C.gold }}>{p.acuerdo}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                    {is80 && (
-                      <tr key={`l${i}`}>
-                        <td colSpan={5} style={{ padding: '4px 0' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ flex: 1, borderTop: `1px dashed ${C.gold}` }} />
-                            <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, background: `${C.gold}20`, color: C.gold, padding: '3px 10px', borderRadius: 4 }}>↑ 80% del gasto</span>
-                            <div style={{ flex: 1, borderTop: `1px dashed ${C.gold}` }} />
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                )
-              })}
-            </tbody>
-          </table>
-        </Card>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 16 }}>
-        {[
-          { label: 'Spend Fragmentado', val: 'US$ 287,400', sub: '18% del gasto · Oportunidad de consolidar', icon: BarChart2, color: C.gold   },
-          { label: 'Compras Emergencia', val: 'US$ 94,200',  sub: '6% del gasto · Objetivo: < 3%',            icon: Zap,      color: C.danger },
-          { label: 'Proveedores Activos', val: '47',         sub: 'Benchmark sector: 35',                     icon: Users,    color: C.info   },
-        ].map(({ label, val, sub, icon: Icon, color }) => (
-          <Card key={label} className="p-4" style={{ display: 'flex', gap: 14 }}>
-            <div style={{ padding: 10, borderRadius: 8, background: `${color}15`, flexShrink: 0, alignSelf: 'flex-start' }}>
-              <Icon size={18} style={{ color }} />
-            </div>
-            <div>
-              <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>{label}</div>
-              <div style={{ fontFamily: 'Inter', fontWeight: 900, fontSize: 22, color, margin: '4px 0' }}>{val}</div>
-              <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>{sub}</div>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── INVENTARIO MRO ──────────────────────────────────────────────────────────
-function Inventario({ isMobile }) {
-  const [filtro, setFiltro] = useState('Todos')
-  const list = filtro === 'Todos' ? inventario : inventario.filter(i => i.estado === filtro)
-
-  return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 14px' : 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? 10 : 12 }}>
-        {[
-          { l: 'Ítems en Stock',      v: '1,247',  c: C.text,   s: ''                         },
-          { l: 'Valor en Inventario', v: 'US$ 2.4M', c: C.text, s: ''                         },
-          { l: 'Stock Crítico',       v: `${inventario.filter(i => i.estado === 'Crítico').length}`, c: C.danger, s: 'requieren reorden' },
-          { l: 'Inmovilizado',        v: '23',     c: C.warn,   s: 'sin movimiento 90+ días'   },
-        ].map(({ l, v, c, s }) => (
-          <Card key={l} className="px-4 py-3">
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: isMobile ? 10 : 11, color: C.muted }}>{l}</div>
-            <div style={{ fontFamily: 'Inter', fontWeight: 900, fontSize: isMobile ? 20 : 26, color: c, marginTop: 4 }}>{v}</div>
-            {s && <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, marginTop: 2 }}>{s}</div>}
-          </Card>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto' }}>
-        {['Todos', 'Crítico', 'Bajo', 'Normal'].map(f => (
-          <button key={f} onClick={() => setFiltro(f)}
-            style={{ padding: '6px 14px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: filtro === f ? `${C.primary}20` : C.card, color: filtro === f ? C.primary : C.muted, border: `1px solid ${filtro === f ? C.primary : C.border}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {f}
-          </button>
-        ))}
-        <button style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, background: C.primary, color: C.bg, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          <Plus size={13} />{isMobile ? 'Movimiento' : 'Registrar Movimiento'}
-        </button>
-      </div>
-
-      <Card className="p-4" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'IBM Plex Mono', fontSize: 12, minWidth: 620 }}>
-          <thead>
-            <tr style={{ color: C.muted, borderBottom: `1px solid ${C.border}` }}>
-              {['Descripción', 'Cat.', 'Stock / Rango', 'Estado', 'Valor', 'Mov/mes'].map(h => (
-                <th key={h} style={{ padding: '0 14px 8px 0', textAlign: 'left', fontWeight: 500 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((item, i) => {
-              const pct = Math.min((item.stock / item.max) * 100, 100)
-              const color = item.estado === 'Crítico' ? C.danger : item.estado === 'Bajo' ? C.warn : C.primary
-              const coberturaDias = item.mov > 0 ? Math.round(item.stock / (item.mov / 30)) : null
-              return (
-                <tr key={i} style={{ borderBottom: `1px solid ${C.border}40`, color: C.text, background: item.estado === 'Crítico' ? `${C.danger}06` : 'transparent' }}>
-                  <td style={{ padding: '10px 14px 10px 0' }}>
-                    <div style={{ fontWeight: 600 }}>{item.desc}</div>
-                    <div style={{ fontSize: 10, color: C.muted }}>{item.codigo}</div>
-                  </td>
-                  <td style={{ padding: '10px 14px 10px 0', color: C.muted }}>{item.cat}</td>
-                  <td style={{ padding: '10px 14px 10px 0', width: 130 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                      <span style={{ color }}>{item.stock}</span>
-                      <span style={{ color: C.muted, fontSize: 11 }}>{item.unidad}</span>
-                    </div>
-                    <div style={{ background: C.border, borderRadius: 4, height: 5 }}>
-                      <div style={{ height: 5, borderRadius: 4, background: color, width: `${pct}%` }} />
-                    </div>
-                  </td>
-                  <td style={{ padding: '10px 14px 10px 0' }}><Badge>{item.estado}</Badge></td>
-                  <td style={{ padding: '10px 14px 10px 0', fontWeight: 600 }}>{fmt(item.valor)}</td>
-                  <td style={{ padding: '10px 0 10px 0', color: C.muted }}>{item.mov}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </Card>
-    </div>
-  )
-}
-
 // ─── VIEWS MAP ────────────────────────────────────────────────────────────────
 const VIEWS = {
-  dashboard:   { comp: Dashboard,  title: 'Dashboard Ejecutivo'    },
-  solped:      { comp: Solped,     title: 'Procesamiento SOLPED'   },
+  dashboard:   { comp: Dashboard,   title: 'Dashboard Ejecutivo'    },
+  solped:      { comp: Solped,      title: 'Procesamiento SOLPED'   },
   proveedores: { comp: Proveedores, title: 'Maestro de Proveedores' },
-  ordenes:     { comp: Ordenes,    title: 'Órdenes de Compra'      },
-  acuerdos:    { comp: Acuerdos,   title: 'Acuerdos Marco'         },
-  spend:       { comp: Spend,      title: 'Spend Analysis'         },
-  inventario:  { comp: Inventario, title: 'Inventario MRO'         },
+  ordenes:     { comp: Ordenes,     title: 'Órdenes de Compra'      },
+  acuerdos:    { comp: Acuerdos,    title: 'Acuerdos Marco'         },
 }
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
