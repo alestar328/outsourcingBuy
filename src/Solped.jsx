@@ -305,7 +305,7 @@ function UploadZone({ onFile, onSample, loading, error }) {
 }
 
 // ── Main SOLPED component ─────────────────────────────────────────────────────
-export default function Solped() {
+export default function Solped({ isMobile = false }) {
   const [items,     setItems]     = useState([])
   const [loading,   setLoading]   = useState(false)
   const [error,     setError]     = useState(null)
@@ -407,7 +407,7 @@ export default function Solped() {
     <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: C.bg }}>
 
       {/* ── Summary cards ────────────────────────────────────────────────── */}
-      <div style={{ padding: '10px 24px', borderBottom: `1px solid ${C.border}`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ padding: isMobile ? '10px 14px' : '10px 24px', borderBottom: `1px solid ${C.border}`, display: 'flex', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', alignItems: 'center', paddingBottom: isMobile ? 10 : undefined }}>
         {summary.map(s => (
           <SummaryCard key={s.nombre} nombre={s.nombre} count={s.count} valorUSD={s.valorUSD}
             active={filtroCats.includes(s.nombre)} onClick={() => toggleCatFilter(s.nombre)} />
@@ -424,15 +424,15 @@ export default function Solped() {
       </div>
 
       {/* ── Controls ─────────────────────────────────────────────────────── */}
-      <div style={{ padding: '10px 24px', borderBottom: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative' }}>
+      <div style={{ padding: isMobile ? '10px 14px' : '10px 24px', borderBottom: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: isMobile ? 1 : 'none' }}>
             <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: C.muted }} />
             <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar descripción, N° SOLPED, solicitante..."
-              style={{ paddingLeft: 28, paddingRight: 12, paddingTop: 7, paddingBottom: 7, borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: C.card, border: `1px solid ${C.border}`, color: C.text, outline: 'none', width: 320 }} />
+              placeholder={isMobile ? 'Buscar...' : 'Buscar descripción, N° SOLPED, solicitante...'}
+              style={{ paddingLeft: 28, paddingRight: 12, paddingTop: 7, paddingBottom: 7, borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: C.card, border: `1px solid ${C.border}`, color: C.text, outline: 'none', width: isMobile ? '100%' : 320 }} />
           </div>
-          {[
+          {!isMobile && [
             ['todos',    'Todos'],
             ['urgente',  '⚡ Urgente >60d'],
             ['atencion', '⚠ Atención 31–60d'],
@@ -479,6 +479,17 @@ export default function Solped() {
           )}
         </div>
       </div>
+
+      {isMobile && (
+        <div style={{ padding: '4px 14px 8px', borderBottom: `1px solid ${C.border}`, display: 'flex', gap: 6, overflowX: 'auto' }}>
+          {[['todos','Todos'],['urgente','⚡ >60d'],['atencion','⚠ 31–60d'],['normal','✓ ≤30d']].map(([val,lbl]) => (
+            <button key={val} onClick={() => setFiltroUrg(val)}
+              style={{ padding: '4px 10px', borderRadius: 6, fontFamily: 'IBM Plex Mono', fontSize: 11, background: filtroUrg === val ? `${C.primary}20` : C.card, color: filtroUrg === val ? C.primary : C.muted, border: `1px solid ${filtroUrg === val ? C.primary : C.border}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {lbl}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
       <div style={{ flex: 1, overflow: 'auto' }}>
