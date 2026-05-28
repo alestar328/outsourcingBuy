@@ -1,9 +1,11 @@
 import { useState } from 'react'
 
 const C = {
-  bg: '#0D1B2A', card: '#1A2B3C', primary: '#00C896',
-  gold: '#C9A84C', text: '#F0F4F8', muted: '#8BA3B8',
-  border: '#243447', danger: '#EF4444', warn: '#F59E0B',
+  bg: '#F5F6F7', card: '#FFFFFF', shell: '#354A5E',
+  primary: '#0070F2', brand: '#0854A0',
+  gold: '#E78C07', text: '#32363A', muted: '#6A6D70',
+  border: '#E5E5E5', borderInput: '#BABABA',
+  danger: '#BB0000', warn: '#E78C07',
 }
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -76,13 +78,13 @@ const INIT = () => ({
 function Inp({ label, value, onChange, type = 'text', placeholder, span = 1 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 5, gridColumn: `span ${span}` }}>
-      <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
+      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
       <input
         type={type}
         value={value ?? ''}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.text, background: `${C.bg}cc`, border: `1px solid ${C.border}`, borderRadius: 6, padding: '7px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+        style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.text, background: `${C.bg}cc`, border: `1px solid ${C.border}`, borderRadius: 6, padding: '7px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
       />
     </label>
   )
@@ -92,7 +94,7 @@ function Sec({ title, cols, children }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.primary, textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>{title}</span>
+        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: C.primary, textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>{title}</span>
         <div style={{ flex: 1, height: 1, background: C.border }} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 10 }}>
@@ -116,11 +118,11 @@ function FormOC({ data, setData, onPreview, isMobile }) {
   const total = valorVenta + igv
 
   const cellInp = {
-    fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.text,
+    fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.text,
     background: `${C.bg}aa`, border: `1px solid ${C.border}`, borderRadius: 4,
     padding: '4px 6px', outline: 'none', width: '100%', boxSizing: 'border-box',
   }
-  const TH = { fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.muted, padding: '0 8px 8px', textAlign: 'left', fontWeight: 500, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap' }
+  const TH = { fontFamily: 'Inter, sans-serif', fontSize: 10, color: C.muted, padding: '0 8px 8px', textAlign: 'left', fontWeight: 500, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap' }
   const TD = { padding: '6px 8px', verticalAlign: 'top' }
 
   return (
@@ -160,15 +162,15 @@ function FormOC({ data, setData, onPreview, isMobile }) {
       {/* ÍTEMS */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.primary, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Ítems</span>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: C.primary, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Ítems</span>
           <div style={{ flex: 1, height: 1, background: C.border }} />
           <button onClick={addItem}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 6, background: `${C.primary}18`, border: `1px solid ${C.primary}40`, color: C.primary, cursor: 'pointer', fontFamily: 'IBM Plex Mono', fontSize: 11 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 6, background: `${C.primary}18`, border: `1px solid ${C.primary}40`, color: C.primary, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 11 }}>
             + Agregar ítem
           </button>
         </div>
         <div style={{ overflowX: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'IBM Plex Mono', fontSize: 12, minWidth: 900 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Inter, sans-serif', fontSize: 12, minWidth: 900 }}>
             <thead>
               <tr>
                 <th style={{ ...TH, width: 80 }}>Código</th>
@@ -206,19 +208,19 @@ function FormOC({ data, setData, onPreview, isMobile }) {
             <tfoot>
               <tr style={{ borderTop: `2px solid ${C.border}` }}>
                 <td colSpan={5} />
-                <td style={{ padding: '7px 8px', fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, textAlign: 'right' }}>Valor Venta</td>
-                <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.text }}>{valorVenta.toFixed(2)}</td>
+                <td style={{ padding: '7px 8px', fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textAlign: 'right' }}>Valor Venta</td>
+                <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.text }}>{valorVenta.toFixed(2)}</td>
                 <td colSpan={2} />
               </tr>
               <tr>
                 <td colSpan={5} />
-                <td style={{ padding: '4px 8px', fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, textAlign: 'right' }}>IGV 18%</td>
-                <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>{igv.toFixed(2)}</td>
+                <td style={{ padding: '4px 8px', fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textAlign: 'right' }}>IGV 18%</td>
+                <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>{igv.toFixed(2)}</td>
                 <td colSpan={2} />
               </tr>
               <tr style={{ borderTop: `1px solid ${C.border}` }}>
                 <td colSpan={5} />
-                <td style={{ padding: '7px 8px', fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 700, color: C.primary, textAlign: 'right' }}>TOTAL</td>
+                <td style={{ padding: '7px 8px', fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, color: C.primary, textAlign: 'right' }}>TOTAL</td>
                 <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'Inter', fontSize: 15, fontWeight: 900, color: C.primary }}>{total.toFixed(2)}</td>
                 <td colSpan={2} />
               </tr>
@@ -239,11 +241,11 @@ function FormOC({ data, setData, onPreview, isMobile }) {
       {/* ACTION BUTTONS */}
       <div style={{ display: 'flex', gap: 10, paddingBottom: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <button onClick={() => setData(EJEMPLO)}
-          style={{ padding: '10px 20px', borderRadius: 8, background: 'none', border: `1px solid ${C.border}`, color: C.muted, fontFamily: 'IBM Plex Mono', fontSize: 12, cursor: 'pointer' }}>
+          style={{ padding: '10px 20px', borderRadius: 8, background: 'none', border: `1px solid ${C.border}`, color: C.muted, fontFamily: 'Inter, sans-serif', fontSize: 12, cursor: 'pointer' }}>
           Cargar ejemplo
         </button>
         <button onClick={onPreview}
-          style={{ padding: '10px 28px', borderRadius: 8, background: C.primary, border: 'none', color: C.bg, fontFamily: 'IBM Plex Mono', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ padding: '10px 28px', borderRadius: 8, background: C.primary, border: 'none', color: C.bg, fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
           Ver documento →
         </button>
       </div>
@@ -271,11 +273,11 @@ function DocOC({ data, onBack }) {
       {/* FLOATING CONTROLS — hidden on print */}
       <div className="no-print" style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
         <button onClick={onBack}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8, background: C.card, border: `1px solid ${C.border}`, color: C.text, fontFamily: 'IBM Plex Mono', fontSize: 12, cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8, background: C.card, border: `1px solid ${C.border}`, color: C.text, fontFamily: 'Inter, sans-serif', fontSize: 12, cursor: 'pointer' }}>
           ← Volver al formulario
         </button>
         <button onClick={() => window.print()}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 22px', borderRadius: 8, background: C.primary, border: 'none', color: C.bg, fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 22px', borderRadius: 8, background: C.primary, border: 'none', color: C.bg, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
           Imprimir / Guardar PDF
         </button>
       </div>

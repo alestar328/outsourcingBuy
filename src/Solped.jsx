@@ -3,9 +3,11 @@ import * as XLSX from 'xlsx'
 import { Upload, FileSpreadsheet, RefreshCw, Search, AlertCircle, Pencil, ChevronDown } from 'lucide-react'
 
 const C = {
-  bg: '#0D1B2A', card: '#1A2B3C', primary: '#00C896',
-  gold: '#C9A84C', text: '#F0F4F8', muted: '#8BA3B8',
-  border: '#243447', danger: '#EF4444', warn: '#F59E0B', info: '#3B82F6',
+  bg: '#F5F6F7', card: '#FFFFFF', shell: '#354A5E',
+  primary: '#0070F2', brand: '#0854A0',
+  gold: '#E78C07', text: '#32363A', muted: '#6A6D70',
+  border: '#E5E5E5', borderInput: '#BABABA',
+  danger: '#BB0000', warn: '#E78C07', info: '#0070F2', success: '#188F3A',
 }
 
 // ── Category palette with classification rules ────────────────────────────────
@@ -199,7 +201,7 @@ function CatBadge({ item, onEdit }) {
   return (
     <>
       <button ref={btnRef} onClick={handleClick}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px 2px 7px', borderRadius: 3, background: cat.bg, color: cat.fg, fontFamily: 'IBM Plex Mono', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px 2px 7px', borderRadius: 3, background: cat.bg, color: cat.fg, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
         {item.categoria}
         {item.categoriaManual && <Pencil size={8} style={{ opacity: 0.75 }} />}
         <ChevronDown size={9} style={{ opacity: 0.65 }} />
@@ -212,7 +214,7 @@ function CatBadge({ item, onEdit }) {
             <button key={c.nombre} onClick={() => { onEdit(item.id, c.nombre); setOpen(false) }}
               style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 10px', borderRadius: 4, background: item.categoria === c.nombre ? `${c.bg}30` : 'transparent', border: 'none', cursor: 'pointer' }}>
               <span style={{ width: 10, height: 10, borderRadius: 2, background: c.bg, flexShrink: 0 }} />
-              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.text }}>{c.nombre}</span>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.text }}>{c.nombre}</span>
             </button>
           ))}
         </div>
@@ -229,10 +231,10 @@ function SummaryCard({ nombre, count, valorUSD, active, onClick }) {
       style={{ padding: '9px 13px', borderRadius: 8, background: active ? `${info.bg}25` : C.card, border: `1px solid ${active ? info.bg : C.border}`, cursor: 'pointer', textAlign: 'left', minWidth: 110, transition: 'border-color 0.1s, background 0.1s' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
         <span style={{ width: 8, height: 8, borderRadius: 2, background: info.bg, flexShrink: 0 }} />
-        <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, fontWeight: 600, color: active ? info.bg : C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{nombre}</span>
+        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, color: active ? info.bg : C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{nombre}</span>
       </div>
       <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 22, color: C.text, lineHeight: 1 }}>{count}</div>
-      <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.muted, marginTop: 3 }}>US$ {fmtMoney(valorUSD)}</div>
+      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: C.muted, marginTop: 3 }}>US$ {fmtMoney(valorUSD)}</div>
     </button>
   )
 }
@@ -268,7 +270,7 @@ function UploadZone({ onFile, onSample, loading, error }) {
           <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 17, color: C.text, marginBottom: 8 }}>
             {loading ? 'Procesando archivo...' : dragging ? 'Suelta para cargar' : 'Arrastra el Excel SOLPED aquí'}
           </div>
-          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.muted, lineHeight: 1.7 }}>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.muted, lineHeight: 1.7 }}>
             Exportación SAP de Solicitudes de Pedido<br />
             Formato <b style={{ color: C.text }}>.xlsx</b> o <b style={{ color: C.text }}>.xls</b>
           </div>
@@ -276,7 +278,7 @@ function UploadZone({ onFile, onSample, loading, error }) {
 
         {!loading && (
           <button onClick={e => { e.stopPropagation(); inputRef.current?.click() }}
-            style={{ padding: '9px 28px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, background: C.primary, color: C.bg, border: 'none', cursor: 'pointer' }}>
+            style={{ padding: '9px 28px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, background: C.primary, color: C.bg, border: 'none', cursor: 'pointer' }}>
             Seleccionar Archivo
           </button>
         )}
@@ -286,17 +288,17 @@ function UploadZone({ onFile, onSample, loading, error }) {
         <div style={{ display: 'flex', gap: 12, padding: '14px 20px', borderRadius: 10, background: `${C.danger}15`, border: `1px solid ${C.danger}40`, maxWidth: 520, width: '100%' }}>
           <AlertCircle size={16} style={{ color: C.danger, flexShrink: 0, marginTop: 2 }} />
           <div>
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, color: C.danger, marginBottom: 4 }}>Error al procesar el archivo</div>
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.muted }}>{error}</div>
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, marginTop: 6 }}>Asegúrate de que sea una exportación SOLPED de SAP con la estructura estándar (columnas 0–22).</div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: C.danger, marginBottom: 4 }}>Error al procesar el archivo</div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.muted }}>{error}</div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginTop: 6 }}>Asegúrate de que sea una exportación SOLPED de SAP con la estructura estándar (columnas 0–22).</div>
           </div>
         </div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-        <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>¿No tienes un archivo listo?</div>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>¿No tienes un archivo listo?</div>
         <button onClick={onSample}
-          style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.primary, background: 'transparent', border: `1px solid ${C.primary}40`, padding: '7px 18px', borderRadius: 8, cursor: 'pointer' }}>
+          style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.primary, background: 'transparent', border: `1px solid ${C.primary}40`, padding: '7px 18px', borderRadius: 8, cursor: 'pointer' }}>
           Cargar datos de ejemplo (10 ítems)
         </button>
       </div>
@@ -413,13 +415,13 @@ export default function Solped({ isMobile = false }) {
             active={filtroCats.includes(s.nombre)} onClick={() => toggleCatFilter(s.nombre)} />
         ))}
         <div style={{ marginLeft: 'auto', textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>
             {filename && <>{filename} · </>}{items.length} ítems
           </div>
           <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: C.text, marginTop: 2 }}>
             US$ {fmtMoney(totalUSD)}
           </div>
-          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.muted }}>valor total</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: C.muted }}>valor total</div>
         </div>
       </div>
 
@@ -430,7 +432,7 @@ export default function Solped({ isMobile = false }) {
             <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: C.muted }} />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder={isMobile ? 'Buscar...' : 'Buscar descripción, N° SOLPED, solicitante...'}
-              style={{ paddingLeft: 28, paddingRight: 12, paddingTop: 7, paddingBottom: 7, borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: C.card, border: `1px solid ${C.border}`, color: C.text, outline: 'none', width: isMobile ? '100%' : 320 }} />
+              style={{ paddingLeft: 28, paddingRight: 12, paddingTop: 7, paddingBottom: 7, borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, background: C.card, border: `1px solid ${C.border}`, color: C.text, outline: 'none', width: isMobile ? '100%' : 320 }} />
           </div>
           {!isMobile && [
             ['todos',    'Todos'],
@@ -439,41 +441,41 @@ export default function Solped({ isMobile = false }) {
             ['normal',   '✓ Normal ≤30d'],
           ].map(([val, lbl]) => (
             <button key={val} onClick={() => setFiltroUrg(val)}
-              style={{ padding: '6px 12px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 11, background: filtroUrg === val ? `${C.primary}20` : C.card, color: filtroUrg === val ? C.primary : C.muted, border: `1px solid ${filtroUrg === val ? C.primary : C.border}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ padding: '6px 12px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 11, background: filtroUrg === val ? `${C.primary}20` : C.card, color: filtroUrg === val ? C.primary : C.muted, border: `1px solid ${filtroUrg === val ? C.primary : C.border}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {lbl}
             </button>
           ))}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
             {selected.size > 0 && (
-              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.primary, fontWeight: 600 }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.primary, fontWeight: 600 }}>
                 {selected.size} seleccionado{selected.size !== 1 ? 's' : ''}
               </span>
             )}
-            <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>
               {filtrada.length} de {items.length} ítems
             </span>
             <button onClick={reset}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 11, background: C.card, color: C.muted, border: `1px solid ${C.border}`, cursor: 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 11, background: C.card, color: C.muted, border: `1px solid ${C.border}`, cursor: 'pointer' }}>
               <Upload size={11} /> Cargar otro
             </button>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, marginRight: 2 }}>Categoría:</span>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginRight: 2 }}>Categoría:</span>
           {CATEGORIAS_SOLPED.map(cat => {
             if (!items.some(it => it.categoria === cat.nombre)) return null
             const active = filtroCats.includes(cat.nombre)
             return (
               <button key={cat.nombre} onClick={() => toggleCatFilter(cat.nombre)}
-                style={{ padding: '3px 10px', borderRadius: 4, fontFamily: 'IBM Plex Mono', fontSize: 11, fontWeight: active ? 600 : 400, background: active ? cat.bg : `${cat.bg}22`, color: active ? cat.fg : cat.bg, border: `1px solid ${active ? cat.bg : cat.bg + '60'}`, cursor: 'pointer' }}>
+                style={{ padding: '3px 10px', borderRadius: 4, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: active ? 600 : 400, background: active ? cat.bg : `${cat.bg}22`, color: active ? cat.fg : cat.bg, border: `1px solid ${active ? cat.bg : cat.bg + '60'}`, cursor: 'pointer' }}>
                 {cat.nombre}
               </button>
             )
           })}
           {hasFilters && (
             <button onClick={() => { setFiltroCats([]); setFiltroUrg('todos'); setSearch('') }}
-              style={{ padding: '3px 10px', borderRadius: 4, fontFamily: 'IBM Plex Mono', fontSize: 11, background: 'transparent', color: C.muted, border: `1px solid ${C.border}`, cursor: 'pointer' }}>
+              style={{ padding: '3px 10px', borderRadius: 4, fontFamily: 'Inter, sans-serif', fontSize: 11, background: 'transparent', color: C.muted, border: `1px solid ${C.border}`, cursor: 'pointer' }}>
               × Limpiar filtros
             </button>
           )}
@@ -484,7 +486,7 @@ export default function Solped({ isMobile = false }) {
         <div style={{ padding: '4px 14px 8px', borderBottom: `1px solid ${C.border}`, display: 'flex', gap: 6, overflowX: 'auto' }}>
           {[['todos','Todos'],['urgente','⚡ >60d'],['atencion','⚠ 31–60d'],['normal','✓ ≤30d']].map(([val,lbl]) => (
             <button key={val} onClick={() => setFiltroUrg(val)}
-              style={{ padding: '4px 10px', borderRadius: 6, fontFamily: 'IBM Plex Mono', fontSize: 11, background: filtroUrg === val ? `${C.primary}20` : C.card, color: filtroUrg === val ? C.primary : C.muted, border: `1px solid ${filtroUrg === val ? C.primary : C.border}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ padding: '4px 10px', borderRadius: 6, fontFamily: 'Inter, sans-serif', fontSize: 11, background: filtroUrg === val ? `${C.primary}20` : C.card, color: filtroUrg === val ? C.primary : C.muted, border: `1px solid ${filtroUrg === val ? C.primary : C.border}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {lbl}
             </button>
           ))}
@@ -493,7 +495,7 @@ export default function Solped({ isMobile = false }) {
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        <table style={{ width: '100%', minWidth: 1060, borderCollapse: 'collapse', fontFamily: 'IBM Plex Mono', fontSize: 12, tableLayout: 'fixed' }}>
+        <table style={{ width: '100%', minWidth: 1060, borderCollapse: 'collapse', fontFamily: 'Inter, sans-serif', fontSize: 12, tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: 38  }} />
             <col style={{ width: 112 }} />
@@ -524,7 +526,7 @@ export default function Solped({ isMobile = false }) {
           <tbody>
             {filtrada.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ padding: 48, textAlign: 'center', fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.muted }}>
+                <td colSpan={9} style={{ padding: 48, textAlign: 'center', fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.muted }}>
                   Sin resultados para los filtros aplicados.
                 </td>
               </tr>

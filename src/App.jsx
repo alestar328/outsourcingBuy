@@ -13,9 +13,11 @@ import {
 
 // ─── PALETTE ──────────────────────────────────────────────────────────────────
 const C = {
-  bg: '#0D1B2A', card: '#1A2B3C', primary: '#00C896',
-  gold: '#C9A84C', text: '#F0F4F8', muted: '#8BA3B8',
-  border: '#243447', danger: '#EF4444', warn: '#F59E0B', info: '#3B82F6',
+  bg: '#F5F6F7', card: '#FFFFFF', shell: '#354A5E',
+  primary: '#0070F2', brand: '#0854A0',
+  gold: '#E78C07', text: '#32363A', muted: '#6A6D70',
+  border: '#E5E5E5', borderInput: '#BABABA',
+  danger: '#BB0000', warn: '#E78C07', info: '#0070F2', success: '#188F3A',
 }
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
@@ -101,40 +103,38 @@ function ScoreBar({ value, size = 'md' }) {
   )
 }
 
+const BADGE_STYLES = {
+  Aprobada:    { bg: '#E8F5E9', fg: '#1B6B2E' }, Completada:  { bg: '#E8F5E9', fg: '#1B6B2E' },
+  Homologado:  { bg: '#E8F5E9', fg: '#1B6B2E' }, Vigente:     { bg: '#E8F5E9', fg: '#1B6B2E' },
+  Normal:      { bg: '#E8F5E9', fg: '#1B6B2E' },
+  Pendiente:   { bg: '#FFF3E0', fg: '#C76B00' }, Condicional: { bg: '#FFF3E0', fg: '#C76B00' },
+  Bajo:        { bg: '#FFF3E0', fg: '#C76B00' }, 'Por Renovar': { bg: '#FFF3E0', fg: '#C76B00' },
+  Urgente:     { bg: '#FDECEA', fg: '#9E0000' }, Rechazado:   { bg: '#FDECEA', fg: '#9E0000' },
+  Vencido:     { bg: '#FDECEA', fg: '#9E0000' }, Crítico:     { bg: '#FDECEA', fg: '#9E0000' },
+  'En tránsito': { bg: '#E3F0FF', fg: '#0050B3' },
+  Marco:       { bg: '#E3F0FF', fg: '#0050B3' }, Spot:        { bg: '#F0F0FF', fg: '#5000B3' },
+  Importación: { bg: '#F0F0FF', fg: '#5000B3' }, Borrador:    { bg: '#F4F4F4', fg: '#6A6D70' },
+}
+
 function Badge({ children }) {
-  const s = {
-    Aprobada: `${C.primary}25`, Completada: `${C.primary}25`, Homologado: `${C.primary}25`, Vigente: `${C.primary}25`,
-    Pendiente: `${C.warn}25`, Condicional: `${C.warn}25`,
-    Urgente: `${C.danger}25`, Rechazado: `${C.danger}25`, Vencido: `${C.danger}25`, Crítico: `${C.danger}25`,
-    'En tránsito': `${C.info}25`,
-    Marco: `${C.primary}20`, Spot: `${C.info}20`, Importación: '#8B5CF620', Borrador: `${C.border}`,
-    Bajo: `${C.warn}20`, Normal: `${C.primary}15`,
-  }
-  const tc = {
-    Aprobada: C.primary, Completada: C.primary, Homologado: C.primary, Vigente: C.primary,
-    Pendiente: C.warn, Condicional: C.warn, Bajo: C.warn,
-    Urgente: C.danger, Rechazado: C.danger, Vencido: C.danger, Crítico: C.danger,
-    'En tránsito': C.info,
-    Marco: C.primary, Spot: C.info, Importación: '#A78BFA', Borrador: C.muted,
-    Normal: C.primary,
-  }
+  const s = BADGE_STYLES[children] || { bg: '#F4F4F4', fg: '#6A6D70' }
   return (
-    <span className="text-xs font-mono px-2 py-0.5 rounded-sm" style={{ background: s[children] || C.border, color: tc[children] || C.muted }}>
+    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, background: s.bg, color: s.fg, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 500 }}>
       {children}
     </span>
   )
 }
 
 function Card({ children, className = '' }) {
-  return <div className={`rounded-lg ${className}`} style={{ background: C.card, border: `1px solid ${C.border}` }}>{children}</div>
+  return <div className={`rounded-lg ${className}`} style={{ background: C.card, border: `1px solid ${C.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>{children}</div>
 }
 
 function TooltipContent({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-lg px-3 py-2 text-xs font-mono" style={{ background: C.card, border: `1px solid ${C.border}`, color: C.text }}>
-      <div className="font-bold mb-1">{label}</div>
-      {payload.map((p, i) => <div key={i} style={{ color: p.color }}>{p.name}: {p.value}K</div>)}
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 12px', fontSize: 12, color: C.text, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+      <div style={{ fontWeight: 600, marginBottom: 4, fontFamily: 'Inter, sans-serif' }}>{label}</div>
+      {payload.map((p, i) => <div key={i} style={{ color: p.color, fontFamily: 'Inter, sans-serif' }}>{p.name}: {p.value}K</div>)}
     </div>
   )
 }
@@ -152,7 +152,7 @@ function GaugeMini({ label, value }) {
           strokeWidth={6} strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" />
         <text x={cx} y={cy + 1} textAnchor="middle" fontSize={10} fontFamily="IBM Plex Mono" fontWeight="600" fill={C.text}>{value}</text>
       </svg>
-      <div style={{ fontSize: 10, fontFamily: 'IBM Plex Mono', color: C.muted }}>{label}</div>
+      <div style={{ fontSize: 10, fontFamily: 'Inter, sans-serif', color: C.muted }}>{label}</div>
     </div>
   )
 }
@@ -179,15 +179,15 @@ const SAMPLE_PROVEEDORES = [
 const PROV_KEY = 'minprocure_proveedores'
 
 function inputStyle(err) {
-  return { width: '100%', padding: '8px 12px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: C.bg, border: `1px solid ${err ? C.danger : C.border}`, color: C.text, outline: 'none' }
+  return { width: '100%', padding: '8px 12px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, background: C.bg, border: `1px solid ${err ? C.danger : C.border}`, color: C.text, outline: 'none' }
 }
 
 function FormField({ label, error, children }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, letterSpacing: '0.05em' }}>{label}</label>
+      <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, letterSpacing: '0.05em' }}>{label}</label>
       {children}
-      {error && <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.danger }}>{error}</span>}
+      {error && <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.danger }}>{error}</span>}
     </div>
   )
 }
@@ -195,7 +195,7 @@ function FormField({ label, error, children }) {
 function CatBadge({ nombre }) {
   const cat = CATEGORIAS.find(c => c.nombre === nombre)
   return (
-    <span style={{ padding: '2px 8px', borderRadius: 3, background: cat ? cat.bg : C.border, color: cat ? cat.fg : C.muted, fontSize: 11, fontFamily: 'IBM Plex Mono', fontWeight: 600, display: 'inline-block' }}>
+    <span style={{ padding: '2px 8px', borderRadius: 3, background: cat ? cat.bg : C.border, color: cat ? cat.fg : C.muted, fontSize: 11, fontFamily: 'Inter, sans-serif', fontWeight: 600, display: 'inline-block' }}>
       {nombre}
     </span>
   )
@@ -228,14 +228,14 @@ const NAV_SECONDARY = []
 // ─── BOTTOM NAV (mobile) ──────────────────────────────────────────────────────
 function BottomNav({ active, onNav }) {
   return (
-    <div className="no-print" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 56, background: C.card, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'stretch', zIndex: 200 }}>
+    <div className="no-print" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 56, background: C.card, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'stretch', zIndex: 200, boxShadow: '0 -2px 8px rgba(0,0,0,0.08)' }}>
       {NAV_PRIMARY.map(({ id, label, icon: Icon }) => {
         const on = active === id
         return (
           <button key={id} onClick={() => onNav(id)}
             style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', color: on ? C.primary : C.muted, borderTop: `2px solid ${on ? C.primary : 'transparent'}` }}>
             <Icon size={18} />
-            <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, fontWeight: on ? 600 : 400 }}>{label}</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 9, fontWeight: on ? 600 : 400 }}>{label}</span>
           </button>
         )
       })}
@@ -246,35 +246,39 @@ function BottomNav({ active, onNav }) {
 // ─── SIDEBAR (desktop) ────────────────────────────────────────────────────────
 function Sidebar({ active, onNav }) {
   return (
-    <div className="no-print flex flex-col h-full shrink-0" style={{ width: 220, background: C.card, borderRight: `1px solid ${C.border}` }}>
-      <div className="px-5 py-5" style={{ borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: 20, color: C.primary, letterSpacing: '-0.5px' }}>
-          Min<span style={{ color: C.gold }}>Procure</span>
+    <div className="no-print" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: 220, background: C.card, borderRight: `1px solid ${C.border}`, flexShrink: 0 }}>
+      {/* Shell brand strip */}
+      <div style={{ background: C.shell, padding: '14px 18px', flexShrink: 0 }}>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 18, color: '#fff', letterSpacing: '-0.3px' }}>
+          Min<span style={{ color: '#7EC8FF' }}>Procure</span>
         </div>
-        <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, marginTop: 2 }}>Outsourcing Estratégico</div>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>Outsourcing Estratégico</div>
       </div>
-      <div className="mx-3 mt-3 px-3 py-2 rounded-lg" style={{ background: C.bg }}>
-        <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, color: C.text }}>Minera Buenaventura</div>
-        <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>S.A. — Unidad Orcopampa</div>
-        <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.gold, background: `${C.gold}15`, border: `1px solid ${C.gold}40`, padding: '1px 8px', borderRadius: 3, display: 'inline-block', marginTop: 4 }}>DEMO</span>
+      {/* Tenant selector */}
+      <div style={{ margin: '10px 12px', padding: '8px 12px', borderRadius: 6, background: C.bg, border: `1px solid ${C.border}` }}>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: C.text }}>Minera Buenaventura</div>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>S.A. — Unidad Orcopampa</div>
+        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: C.gold, background: `${C.gold}18`, border: `1px solid ${C.gold}40`, padding: '1px 8px', borderRadius: 3, display: 'inline-block', marginTop: 4, fontWeight: 600 }}>DEMO</span>
       </div>
-      <nav className="flex-1 px-2 py-3" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* Navigation */}
+      <nav style={{ flex: 1, paddingTop: 4, display: 'flex', flexDirection: 'column' }}>
         {NAV.map(({ id, label, icon: Icon }) => {
           const on = active === id
           return (
             <button key={id} onClick={() => onNav(id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8, background: on ? `${C.primary}15` : 'transparent', color: on ? C.primary : C.muted, borderLeft: on ? `3px solid ${C.primary}` : '3px solid transparent', fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: on ? 600 : 400, cursor: 'pointer', border: on ? `1px solid ${C.primary}20` : '1px solid transparent', borderLeftColor: on ? C.primary : 'transparent', textAlign: 'left', width: '100%' }}>
-              <Icon size={15} />{label}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 18px', height: 44, width: '100%', background: on ? '#E8F2FF' : 'transparent', color: on ? C.primary : C.text, borderLeft: `3px solid ${on ? C.primary : 'transparent'}`, fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: on ? 600 : 400, cursor: 'pointer', border: 'none', borderLeft: `3px solid ${on ? C.primary : 'transparent'}`, textAlign: 'left' }}>
+              <Icon size={16} style={{ flexShrink: 0, opacity: on ? 1 : 0.65 }} />{label}
             </button>
           )
         })}
       </nav>
-      <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
+      {/* User footer */}
+      <div style={{ padding: '12px 16px', borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: C.primary, color: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontWeight: 700, fontSize: 12 }}>JR</div>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: C.primary, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 12 }}>JR</div>
           <div>
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, color: C.text }}>Jorge Ríos</div>
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>Jefe de Compras</div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: C.text }}>Jorge Ríos</div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>Jefe de Compras</div>
           </div>
         </div>
       </div>
@@ -282,34 +286,35 @@ function Sidebar({ active, onNav }) {
   )
 }
 
-// ─── TOPBAR ───────────────────────────────────────────────────────────────────
+// ─── TOPBAR (Fiori Shell Bar) ─────────────────────────────────────────────────
 function Topbar({ title, isMobile, viewMode, onToggleViewMode }) {
   return (
-    <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '0 14px' : '0 24px', height: isMobile ? 50 : 46, background: C.card, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-      {/* Left: logo on mobile, title on desktop */}
+    <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '0 14px' : '0 20px', height: isMobile ? 50 : 48, background: C.shell, flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.18)' }}>
       {isMobile ? (
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: 17, color: C.primary, letterSpacing: '-0.5px' }}>
-          Min<span style={{ color: C.gold }}>Procure</span>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 17, color: '#fff', letterSpacing: '-0.3px' }}>
+          Min<span style={{ color: '#7EC8FF' }}>Procure</span>
         </div>
       ) : (
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 15, color: C.text, letterSpacing: '0.3px' }}>{title}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 15, color: '#fff', letterSpacing: '-0.2px' }}>MinProcure</span>
+          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14 }}>|</span>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: 'rgba(255,255,255,0.85)' }}>{title}</span>
+        </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14 }}>
-        {/* View mode toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10 }}>
         <button onClick={onToggleViewMode} title={viewMode === 'desktop' ? 'Cambiar a vista móvil' : 'Cambiar a vista escritorio'}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 6, background: `${C.primary}18`, border: `1px solid ${C.primary}40`, color: C.primary, cursor: 'pointer', fontFamily: 'IBM Plex Mono', fontSize: 11 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 4, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 11 }}>
           {viewMode === 'desktop' ? <Smartphone size={13} /> : <Monitor size={13} />}
           {!isMobile && <span>{viewMode === 'desktop' ? 'Vista Móvil' : 'Vista Escritorio'}</span>}
         </button>
-
         {!isMobile && (
-          <div style={{ position: 'relative' }}>
-            <Bell size={16} style={{ color: C.muted }} />
-            <span style={{ position: 'absolute', top: -4, right: -4, width: 14, height: 14, borderRadius: '50%', background: C.danger, color: '#fff', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'IBM Plex Mono' }}>3</span>
-          </div>
+          <button style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: 'rgba(255,255,255,0.85)', display: 'flex' }}>
+            <Bell size={17} />
+            <span style={{ position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderRadius: '50%', background: C.danger, border: '1px solid rgba(255,255,255,0.5)' }} />
+          </button>
         )}
-        <div style={{ width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', background: C.primary, color: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontWeight: 700, fontSize: isMobile ? 11 : 12 }}>JR</div>
+        <div style={{ width: isMobile ? 28 : 32, height: isMobile ? 28 : 32, borderRadius: '50%', background: 'rgba(255,255,255,0.22)', border: '1px solid rgba(255,255,255,0.35)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: isMobile ? 11 : 12 }}>JR</div>
       </div>
     </div>
   )
@@ -330,27 +335,27 @@ function Dashboard({ isMobile }) {
           null,
         ].map((k, i) => k ? (
           <Card key={i} className="p-4">
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: isMobile ? 9 : 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{k.label}</div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: isMobile ? 9 : 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{k.label}</div>
             <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: isMobile ? 18 : 24, color: C.text, margin: '6px 0' }}>{k.value}</div>
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, marginBottom: 8 }}>{k.sub}</div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginBottom: 8 }}>{k.sub}</div>
             <ScoreBar value={k.pct} />
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, marginTop: 4 }}>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, marginTop: 4 }}>
               <span style={{ color: k.color }}>{k.pct}% de meta</span>
             </div>
           </Card>
         ) : (
           <Card key={i} className="p-4">
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: isMobile ? 9 : 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Contratos Activos</div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: isMobile ? 9 : 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Contratos Activos</div>
             <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: isMobile ? 22 : 28, color: C.text, margin: '6px 0' }}>42</div>
             <Badge>Pendiente</Badge>
-            <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.warn, marginLeft: 6 }}>3 vencen en 30d</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.warn, marginLeft: 6 }}>3 vencen en 30d</span>
           </Card>
         ))}
       </div>
 
       {/* Area chart */}
       <Card className="p-5">
-        <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
           Gasto Mensual vs. Ahorro Generado (US$ miles)
         </div>
         <ResponsiveContainer width="100%" height={isMobile ? 150 : 210}>
@@ -364,8 +369,8 @@ function Dashboard({ isMobile }) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-            <XAxis dataKey="mes" tick={{ fill: C.muted, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: C.muted, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="mes" tick={{ fill: C.muted, fontSize: 10, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: C.muted, fontSize: 10, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
             <Tooltip content={<TooltipContent />} />
             <Area type="monotone" dataKey="gasto"  name="Gasto"  stroke={C.info}    fill="url(#gG)" strokeWidth={2} />
             <Area type="monotone" dataKey="ahorro" name="Ahorro" stroke={C.primary} fill="url(#gA)" strokeWidth={2} />
@@ -376,8 +381,8 @@ function Dashboard({ isMobile }) {
       {/* Bottom row */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: 16 }}>
         <Card className="p-4" style={{ overflowX: 'auto' }}>
-          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Últimas Órdenes de Compra</div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'IBM Plex Mono', fontSize: 12, minWidth: isMobile ? 480 : 'auto' }}>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Últimas Órdenes de Compra</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Inter, sans-serif', fontSize: 12, minWidth: isMobile ? 480 : 'auto' }}>
             <thead>
               <tr style={{ color: C.muted, borderBottom: `1px solid ${C.border}` }}>
                 {['N° OC', 'Proveedor', 'Monto', 'Estado'].map(h => (
@@ -398,7 +403,7 @@ function Dashboard({ isMobile }) {
           </table>
         </Card>
         <Card className="p-4">
-          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Alertas Activas</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Alertas Activas</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {alertas.map((a, i) => {
               const Icon = a.icon
@@ -407,8 +412,8 @@ function Dashboard({ isMobile }) {
                 <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: 12, borderBottom: i < alertas.length - 1 ? `1px solid ${C.border}50` : 'none' }}>
                   <Icon size={14} style={{ color, flexShrink: 0, marginTop: 2 }} />
                   <div>
-                    <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, color: C.text }}>{a.msg}</div>
-                    <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, marginTop: 2 }}>{a.sub}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: C.text }}>{a.msg}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginTop: 2 }}>{a.sub}</div>
                   </div>
                 </div>
               )
@@ -482,7 +487,7 @@ function Proveedores({ isMobile }) {
   // Modal overlay style differs between mobile (full screen) and desktop (centered)
   const modalOverlayStyle = isMobile
     ? { position: 'fixed', inset: 0, zIndex: 50, background: C.bg, display: 'flex', flexDirection: 'column', overflow: 'auto' }
-    : { position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(13,27,42,0.90)' }
+    : { position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(50,54,58,0.50)' }
   const modalBoxStyle = isMobile
     ? { background: C.card, padding: '16px 16px 40px', flex: 1 }
     : { background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 32, width: 560, maxHeight: '90vh', overflowY: 'auto' }
@@ -495,19 +500,19 @@ function Proveedores({ isMobile }) {
           <div style={{ position: 'relative', flex: isMobile ? 1 : 'none' }}>
             <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: C.muted }} />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder={isMobile ? 'Buscar...' : 'Razón social, RUC o nombre comercial...'}
-              style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: C.card, border: `1px solid ${C.border}`, color: C.text, outline: 'none', width: isMobile ? '100%' : 310 }} />
+              style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, background: C.card, border: `1px solid ${C.border}`, color: C.text, outline: 'none', width: isMobile ? '100%' : 310 }} />
           </div>
           {!isMobile && [['todos','Todos'],['activos','Activos'],['inactivos','Inactivos']].map(([val,lbl]) => (
             <button key={val} onClick={() => setFiltroEstado(val)}
-              style={{ padding: '7px 14px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: filtroEstado === val ? `${C.primary}20` : C.card, color: filtroEstado === val ? C.primary : C.muted, border: `1px solid ${filtroEstado === val ? C.primary : C.border}`, cursor: 'pointer' }}>
+              style={{ padding: '7px 14px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, background: filtroEstado === val ? `${C.primary}20` : C.card, color: filtroEstado === val ? C.primary : C.muted, border: `1px solid ${filtroEstado === val ? C.primary : C.border}`, cursor: 'pointer' }}>
               {lbl}
             </button>
           ))}
-          <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, display: isMobile ? 'none' : 'inline' }}>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, display: isMobile ? 'none' : 'inline' }}>
             {filtrada.length} resultado{filtrada.length !== 1 ? 's' : ''}
           </span>
           <button onClick={openNuevo}
-            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '8px 14px' : '8px 18px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, background: C.primary, color: C.bg, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '8px 14px' : '8px 18px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, background: C.primary, color: C.bg, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <Plus size={13} />{isMobile ? 'Nuevo' : 'Nuevo Proveedor'}
           </button>
         </div>
@@ -516,30 +521,30 @@ function Proveedores({ isMobile }) {
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
             {[['todos','Todos'],['activos','Activos'],['inactivos','Inactivos']].map(([val,lbl]) => (
               <button key={val} onClick={() => setFiltroEstado(val)}
-                style={{ padding: '5px 12px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 11, background: filtroEstado === val ? `${C.primary}20` : C.card, color: filtroEstado === val ? C.primary : C.muted, border: `1px solid ${filtroEstado === val ? C.primary : C.border}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                style={{ padding: '5px 12px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 11, background: filtroEstado === val ? `${C.primary}20` : C.card, color: filtroEstado === val ? C.primary : C.muted, border: `1px solid ${filtroEstado === val ? C.primary : C.border}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {lbl}
               </button>
             ))}
-            <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, display: 'flex', alignItems: 'center', marginLeft: 4, whiteSpace: 'nowrap' }}>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, display: 'flex', alignItems: 'center', marginLeft: 4, whiteSpace: 'nowrap' }}>
               {filtrada.length} resultados
             </span>
           </div>
         )}
 
         <div style={{ display: 'flex', gap: 6, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', alignItems: 'center', paddingBottom: isMobile ? 2 : 0 }}>
-          <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, marginRight: 4, flexShrink: 0 }}>Cat:</span>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginRight: 4, flexShrink: 0 }}>Cat:</span>
           {CATEGORIAS.map(cat => {
             const active = filtroCats.includes(cat.nombre)
             return (
               <button key={cat.nombre} onClick={() => toggleCatFilter(cat.nombre)}
-                style={{ padding: '3px 10px', borderRadius: 4, fontFamily: 'IBM Plex Mono', fontSize: 11, fontWeight: active ? 600 : 400, background: active ? cat.bg : `${cat.bg}22`, color: active ? cat.fg : cat.bg, border: `1px solid ${active ? cat.bg : cat.bg + '60'}`, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                style={{ padding: '3px 10px', borderRadius: 4, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: active ? 600 : 400, background: active ? cat.bg : `${cat.bg}22`, color: active ? cat.fg : cat.bg, border: `1px solid ${active ? cat.bg : cat.bg + '60'}`, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {cat.nombre}
               </button>
             )
           })}
           {filtroCats.length > 0 && (
             <button onClick={() => setFiltroCats([])}
-              style={{ padding: '3px 10px', borderRadius: 4, fontFamily: 'IBM Plex Mono', fontSize: 11, background: 'transparent', color: C.muted, border: `1px solid ${C.border}`, cursor: 'pointer', flexShrink: 0 }}>
+              style={{ padding: '3px 10px', borderRadius: 4, fontFamily: 'Inter, sans-serif', fontSize: 11, background: 'transparent', color: C.muted, border: `1px solid ${C.border}`, cursor: 'pointer', flexShrink: 0 }}>
               × Limpiar
             </button>
           )}
@@ -557,7 +562,7 @@ function Proveedores({ isMobile }) {
               <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: C.text, marginBottom: 4 }}>
                 {lista.length === 0 ? 'No hay proveedores registrados' : 'Sin resultados'}
               </div>
-              <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.muted }}>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.muted }}>
                 {lista.length === 0 ? 'Toca "Nuevo" para comenzar.' : 'Ajusta los filtros o la búsqueda.'}
               </div>
             </div>
@@ -570,38 +575,38 @@ function Proveedores({ isMobile }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                   <button onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0, flex: 1, marginRight: 10 }}>
-                    <div style={{ fontFamily: 'IBM Plex Mono', fontWeight: 700, fontSize: 13, color: expandedId === p.id ? C.primary : C.text }}>{p.razonSocial}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13, color: expandedId === p.id ? C.primary : C.text }}>{p.razonSocial}</div>
                     {p.nombreComercial && <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{p.nombreComercial}</div>}
                   </button>
-                  <span style={{ padding: '3px 8px', borderRadius: 4, fontFamily: 'IBM Plex Mono', fontSize: 10, fontWeight: 600, flexShrink: 0, background: p.activo ? `${C.primary}20` : `${C.danger}15`, color: p.activo ? C.primary : C.danger, border: `1px solid ${p.activo ? C.primary + '40' : C.danger + '40'}` }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 4, fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, flexShrink: 0, background: p.activo ? `${C.primary}20` : `${C.danger}15`, color: p.activo ? C.primary : C.danger, border: `1px solid ${p.activo ? C.primary + '40' : C.danger + '40'}` }}>
                     {p.activo ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
-                <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, marginBottom: 8 }}>RUC {p.ruc}</div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginBottom: 8 }}>RUC {p.ruc}</div>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
                   {p.categorias.map(c => <CatBadge key={c} nombre={c} />)}
                 </div>
 
                 {expandedId === p.id && (
                   <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8, background: C.bg, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>{p.contactoEmail}</div>
-                    {p.contactoTelefono && <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>{p.contactoTelefono}</div>}
-                    {p.contactoNombre   && <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.text }}>{p.contactoNombre}</div>}
-                    {p.notas && <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, fontStyle: 'italic' }}>{p.notas}</div>}
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>{p.contactoEmail}</div>
+                    {p.contactoTelefono && <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>{p.contactoTelefono}</div>}
+                    {p.contactoNombre   && <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.text }}>{p.contactoNombre}</div>}
+                    {p.notas && <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, fontStyle: 'italic' }}>{p.notas}</div>}
                   </div>
                 )}
 
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => openEditar(p)} style={{ flex: 1, fontFamily: 'IBM Plex Mono', fontSize: 11, background: 'none', border: `1px solid ${C.border}`, color: C.muted, padding: '6px 0', borderRadius: 6, cursor: 'pointer' }}>Editar</button>
-                  <button onClick={() => toggleActivo(p.id)} style={{ flex: 1, fontFamily: 'IBM Plex Mono', fontSize: 11, background: 'none', border: `1px solid ${C.border}`, color: p.activo ? C.warn : C.primary, padding: '6px 0', borderRadius: 6, cursor: 'pointer' }}>{p.activo ? 'Desactivar' : 'Activar'}</button>
-                  <button onClick={() => setConfirmDelete(p.id)} style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, background: 'none', border: `1px solid ${C.danger}40`, color: C.danger, padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}>×</button>
+                  <button onClick={() => openEditar(p)} style={{ flex: 1, fontFamily: 'Inter, sans-serif', fontSize: 11, background: 'none', border: `1px solid ${C.border}`, color: C.muted, padding: '6px 0', borderRadius: 6, cursor: 'pointer' }}>Editar</button>
+                  <button onClick={() => toggleActivo(p.id)} style={{ flex: 1, fontFamily: 'Inter, sans-serif', fontSize: 11, background: 'none', border: `1px solid ${C.border}`, color: p.activo ? C.warn : C.primary, padding: '6px 0', borderRadius: 6, cursor: 'pointer' }}>{p.activo ? 'Desactivar' : 'Activar'}</button>
+                  <button onClick={() => setConfirmDelete(p.id)} style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, background: 'none', border: `1px solid ${C.danger}40`, color: C.danger, padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}>×</button>
                 </div>
               </div>
             ))}
           </div>
         ) : (
           /* ── Desktop table ── */
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'IBM Plex Mono', fontSize: 12, marginTop: 16 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Inter, sans-serif', fontSize: 12, marginTop: 16 }}>
             <thead>
               <tr style={{ color: C.muted, borderBottom: `1px solid ${C.border}` }}>
                 {['Razón Social', 'RUC', 'Categorías', 'Contacto Email', 'Estado', 'Acciones'].map(h => (
@@ -616,7 +621,7 @@ function Proveedores({ isMobile }) {
                     <td style={{ padding: '12px 12px 12px 0' }}>
                       <button onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
-                        <div style={{ fontWeight: 700, color: expandedId === p.id ? C.primary : C.text, fontFamily: 'IBM Plex Mono', fontSize: 12 }}>{p.razonSocial}</div>
+                        <div style={{ fontWeight: 700, color: expandedId === p.id ? C.primary : C.text, fontFamily: 'Inter, sans-serif', fontSize: 12 }}>{p.razonSocial}</div>
                         {p.nombreComercial && <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{p.nombreComercial}</div>}
                       </button>
                     </td>
@@ -628,22 +633,22 @@ function Proveedores({ isMobile }) {
                     </td>
                     <td style={{ padding: '12px 12px 12px 0', color: C.muted }}>{p.contactoEmail}</td>
                     <td style={{ padding: '12px 12px 12px 0' }}>
-                      <span style={{ padding: '3px 10px', borderRadius: 4, fontFamily: 'IBM Plex Mono', fontSize: 11, fontWeight: 600, background: p.activo ? `${C.primary}20` : `${C.danger}15`, color: p.activo ? C.primary : C.danger, border: `1px solid ${p.activo ? C.primary + '40' : C.danger + '40'}` }}>
+                      <span style={{ padding: '3px 10px', borderRadius: 4, fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 600, background: p.activo ? `${C.primary}20` : `${C.danger}15`, color: p.activo ? C.primary : C.danger, border: `1px solid ${p.activo ? C.primary + '40' : C.danger + '40'}` }}>
                         {p.activo ? 'Activo' : 'Inactivo'}
                       </span>
                     </td>
                     <td style={{ padding: '12px 0 12px 0' }}>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => openEditar(p)} style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, background: 'none', border: `1px solid ${C.border}`, color: C.muted, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Editar</button>
-                        <button onClick={() => toggleActivo(p.id)} style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, background: 'none', border: `1px solid ${C.border}`, color: p.activo ? C.warn : C.primary, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>{p.activo ? 'Desactivar' : 'Activar'}</button>
-                        <button onClick={() => setConfirmDelete(p.id)} style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, background: 'none', border: `1px solid ${C.danger}40`, color: C.danger, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Eliminar</button>
+                        <button onClick={() => openEditar(p)} style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, background: 'none', border: `1px solid ${C.border}`, color: C.muted, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Editar</button>
+                        <button onClick={() => toggleActivo(p.id)} style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, background: 'none', border: `1px solid ${C.border}`, color: p.activo ? C.warn : C.primary, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>{p.activo ? 'Desactivar' : 'Activar'}</button>
+                        <button onClick={() => setConfirmDelete(p.id)} style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, background: 'none', border: `1px solid ${C.danger}40`, color: C.danger, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Eliminar</button>
                       </div>
                     </td>
                   </tr>
                   {expandedId === p.id && (
                     <tr style={{ background: C.card, borderBottom: `1px solid ${C.border}40` }}>
                       <td colSpan={6} style={{ padding: '10px 0 16px 0' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, fontFamily: 'IBM Plex Mono', fontSize: 12 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, fontFamily: 'Inter, sans-serif', fontSize: 12 }}>
                           <div>
                             <div style={{ color: C.muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Contacto</div>
                             <div style={{ color: C.text }}>{p.contactoNombre || '—'}</div>
@@ -709,7 +714,7 @@ function Proveedores({ isMobile }) {
                     const sel = form.categorias.includes(cat.nombre)
                     return (
                       <button key={cat.nombre} type="button" onClick={() => toggleFormCat(cat.nombre)}
-                        style={{ padding: '5px 12px', borderRadius: 6, fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: sel ? 600 : 400, background: sel ? cat.bg : `${cat.bg}20`, color: sel ? cat.fg : cat.bg, border: `2px solid ${sel ? cat.bg : cat.bg + '55'}`, cursor: 'pointer' }}>
+                        style={{ padding: '5px 12px', borderRadius: 6, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: sel ? 600 : 400, background: sel ? cat.bg : `${cat.bg}20`, color: sel ? cat.fg : cat.bg, border: `2px solid ${sel ? cat.bg : cat.bg + '55'}`, cursor: 'pointer' }}>
                         {cat.nombre}
                       </button>
                     )
@@ -721,8 +726,8 @@ function Proveedores({ isMobile }) {
               </FormField>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
-              <button onClick={closeModal} style={{ padding: '9px 20px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={handleSave} style={{ padding: '9px 20px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, background: C.primary, color: C.bg, border: 'none', cursor: 'pointer' }}>{isEdit ? 'Guardar Cambios' : 'Crear Proveedor'}</button>
+              <button onClick={closeModal} style={{ padding: '9px 20px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={handleSave} style={{ padding: '9px 20px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, background: C.primary, color: C.bg, border: 'none', cursor: 'pointer' }}>{isEdit ? 'Guardar Cambios' : 'Crear Proveedor'}</button>
             </div>
           </div>
         </div>
@@ -730,15 +735,15 @@ function Proveedores({ isMobile }) {
 
       {/* ── Delete confirmation ── */}
       {confirmDelete && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(13,27,42,0.92)', padding: isMobile ? '0 20px' : 0 }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(50,54,58,0.52)', padding: isMobile ? '0 20px' : 0 }}>
           <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 28, width: isMobile ? '100%' : 400 }}>
             <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: C.text, marginBottom: 8 }}>Eliminar Proveedor</div>
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.muted, marginBottom: 20 }}>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: C.muted, marginBottom: 20 }}>
               ¿Estás seguro de eliminar a <b style={{ color: C.text }}>{delProv?.razonSocial}</b>? Esta acción no se puede deshacer.
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <button onClick={() => setConfirmDelete(null)} style={{ padding: '8px 18px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={() => handleDelete(confirmDelete)} style={{ padding: '8px 18px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, background: C.danger, color: '#fff', border: 'none', cursor: 'pointer' }}>Eliminar</button>
+              <button onClick={() => setConfirmDelete(null)} style={{ padding: '8px 18px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => handleDelete(confirmDelete)} style={{ padding: '8px 18px', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, background: C.danger, color: '#fff', border: 'none', cursor: 'pointer' }}>Eliminar</button>
             </div>
           </div>
         </div>
@@ -763,26 +768,26 @@ function Acuerdos({ isMobile }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
               <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 12, color, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{label}</span>
-              <span style={{ marginLeft: 'auto', fontFamily: 'IBM Plex Mono', fontSize: 11, background: `${color}20`, color, padding: '2px 8px', borderRadius: 99 }}>{data.length}</span>
+              <span style={{ marginLeft: 'auto', fontFamily: 'Inter, sans-serif', fontSize: 11, background: `${color}20`, color, padding: '2px 8px', borderRadius: 99 }}>{data.length}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {data.map((a, i) => (
                 <div key={i} style={{ padding: 12, borderRadius: 8, background: C.bg, border: `1px solid ${C.border}` }}>
-                  <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 2 }}>{a.nombre}</div>
-                  <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, marginBottom: 8 }}>{a.proveedor}</div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 2 }}>{a.nombre}</div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, marginBottom: 8 }}>{a.proveedor}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, background: C.border, color: C.muted, padding: '2px 6px', borderRadius: 3 }}>{a.cat}</span>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, background: C.border, color: C.muted, padding: '2px 6px', borderRadius: 3 }}>{a.cat}</span>
                     <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: C.text }}>{fmt(a.valor)}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                     <Calendar size={10} style={{ color: C.muted }} />
-                    <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: key === 'vencidos' ? C.danger : key === 'porRenovar' ? C.warn : C.muted }}>Vence: {a.vence}</span>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: key === 'vencidos' ? C.danger : key === 'porRenovar' ? C.warn : C.muted }}>Vence: {a.vence}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ flex: 1, background: C.border, borderRadius: 4, height: 6 }}>
                       <div style={{ height: 6, borderRadius: 4, background: color, width: `${a.ejec}%` }} />
                     </div>
-                    <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color }}>{a.ejec}%</span>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color }}>{a.ejec}%</span>
                   </div>
                 </div>
               ))}
@@ -792,15 +797,15 @@ function Acuerdos({ isMobile }) {
       </div>
 
       <Card className="p-5">
-        <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
           Precio Acuerdo vs. Precio Spot — Top 5 Contratos (US$ miles)
         </div>
         <ResponsiveContainer width="100%" height={isMobile ? 180 : 200}>
           <BarChart data={ahorroComp} layout="vertical" margin={{ left: 10, right: 30 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={C.border} horizontal={false} />
-            <XAxis type="number" tick={{ fill: C.muted, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
-            <YAxis dataKey="name" type="category" tick={{ fill: C.muted, fontSize: isMobile ? 9 : 11, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} width={isMobile ? 90 : 130} />
-            <Tooltip formatter={(v, n) => [`US$ ${v}K`, n === 'acuerdo' ? 'Precio Acuerdo' : 'Precio Spot']} contentStyle={{ background: C.card, border: `1px solid ${C.border}`, fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.text }} />
+            <XAxis type="number" tick={{ fill: C.muted, fontSize: 10, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
+            <YAxis dataKey="name" type="category" tick={{ fill: C.muted, fontSize: isMobile ? 9 : 11, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} width={isMobile ? 90 : 130} />
+            <Tooltip formatter={(v, n) => [`US$ ${v}K`, n === 'acuerdo' ? 'Precio Acuerdo' : 'Precio Spot']} contentStyle={{ background: C.card, border: `1px solid ${C.border}`, fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.text }} />
             <Bar dataKey="spot"    name="Spot"    fill={`${C.danger}50`} radius={[0, 4, 4, 0]} />
             <Bar dataKey="acuerdo" name="Acuerdo" fill={C.primary}       radius={[0, 4, 4, 0]} />
           </BarChart>
@@ -838,7 +843,7 @@ export default function App() {
   const { comp: View, title } = VIEWS[view]
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: C.bg, fontFamily: 'IBM Plex Mono, monospace' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: C.bg, fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif' }}>
       {!isMobile && <Sidebar active={view} onNav={setView} />}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minWidth: 0 }}>
         <Topbar title={title} isMobile={isMobile} viewMode={viewMode} onToggleViewMode={toggleViewMode} />
