@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import Solped from './Solped.jsx'
+import OrdenCompra from './OrdenCompra.jsx'
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -60,23 +61,6 @@ const provScores = {
   5: { fin: 76, tec: 82, leg: 80, amb: 78 }, 6: { fin: 50, tec: 58, leg: 55, amb: 52 },
   7: { fin: 35, tec: 40, leg: 38, amb: 36 }, 8: { fin: 96, tec: 95, leg: 94, amb: 95 },
 }
-const ordenes = [
-  { oc: 'OC-2025-0341', fecha: '22/05/2025', proveedor: 'Famesa Explosivos', cat: 'Explosivos',    monto: 284000, tipo: 'Marco',      estado: 'Aprobada',    lead: 8  },
-  { oc: 'OC-2025-0340', fecha: '21/05/2025', proveedor: 'Orica Mining',      cat: 'Reactivos',     monto: 156800, tipo: 'Marco',      estado: 'Pendiente',   lead: 12 },
-  { oc: 'OC-2025-0339', fecha: '20/05/2025', proveedor: 'Grupo Ferreyros',   cat: 'Repuestos OEM', monto: 98400,  tipo: 'Spot',       estado: 'Aprobada',    lead: 18 },
-  { oc: 'OC-2025-0338', fecha: '19/05/2025', proveedor: 'Air Products',      cat: 'Combustibles',  monto: 312000, tipo: 'Urgente',    estado: 'Aprobada',    lead: 3  },
-  { oc: 'OC-2025-0337', fecha: '18/05/2025', proveedor: 'MSA Safety',        cat: 'EPP',           monto: 42600,  tipo: 'Marco',      estado: 'Aprobada',    lead: 6  },
-  { oc: 'OC-2025-0336', fecha: '17/05/2025', proveedor: 'Komatsu Mitsui',    cat: 'Maquinaria',    monto: 875000, tipo: 'Importación', estado: 'En tránsito', lead: 45 },
-  { oc: 'OC-2025-0335', fecha: '16/05/2025', proveedor: 'SKF del Perú',      cat: 'Rodamientos',   monto: 34200,  tipo: 'Spot',       estado: 'Borrador',    lead: 10 },
-  { oc: 'OC-2025-0334', fecha: '15/05/2025', proveedor: 'Exsa S.A.',         cat: 'Explosivos',    monto: 198000, tipo: 'Marco',      estado: 'Urgente',     lead: 2  },
-  { oc: 'OC-2025-0333', fecha: '14/05/2025', proveedor: 'Air Products',      cat: 'Gases',         monto: 67800,  tipo: 'Marco',      estado: 'Completada',  lead: 7  },
-  { oc: 'OC-2025-0332', fecha: '13/05/2025', proveedor: 'Famesa Explosivos', cat: 'Explosivos',    monto: 320000, tipo: 'Marco',      estado: 'Completada',  lead: 9  },
-]
-const ocItems = [
-  { item: 'ANFO Pesado 94/6',  unidad: 'TM',  cant: 120, precio: 1800, total: 216000 },
-  { item: 'Emulsión Matrix',   unidad: 'TM',  cant: 24,  precio: 2500, total: 60000  },
-  { item: 'Booster 400g',      unidad: 'UND', cant: 800, precio: 10,   total: 8000   },
-]
 const acuerdos = {
   vigentes: [
     { nombre: 'Suministro Explosivos ANFO', proveedor: 'Famesa Explosivos', cat: 'Explosivos',  valor: 2400000, vence: '15/05/2026', ejec: 38 },
@@ -244,7 +228,7 @@ const NAV_SECONDARY = []
 // ─── BOTTOM NAV (mobile) ──────────────────────────────────────────────────────
 function BottomNav({ active, onNav }) {
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 56, background: C.card, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'stretch', zIndex: 200 }}>
+    <div className="no-print" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 56, background: C.card, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'stretch', zIndex: 200 }}>
       {NAV_PRIMARY.map(({ id, label, icon: Icon }) => {
         const on = active === id
         return (
@@ -262,7 +246,7 @@ function BottomNav({ active, onNav }) {
 // ─── SIDEBAR (desktop) ────────────────────────────────────────────────────────
 function Sidebar({ active, onNav }) {
   return (
-    <div className="flex flex-col h-full shrink-0" style={{ width: 220, background: C.card, borderRight: `1px solid ${C.border}` }}>
+    <div className="no-print flex flex-col h-full shrink-0" style={{ width: 220, background: C.card, borderRight: `1px solid ${C.border}` }}>
       <div className="px-5 py-5" style={{ borderBottom: `1px solid ${C.border}` }}>
         <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: 20, color: C.primary, letterSpacing: '-0.5px' }}>
           Min<span style={{ color: C.gold }}>Procure</span>
@@ -301,7 +285,7 @@ function Sidebar({ active, onNav }) {
 // ─── TOPBAR ───────────────────────────────────────────────────────────────────
 function Topbar({ title, isMobile, viewMode, onToggleViewMode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '0 14px' : '0 24px', height: isMobile ? 50 : 46, background: C.card, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+    <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '0 14px' : '0 24px', height: isMobile ? 50 : 46, background: C.card, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
       {/* Left: logo on mobile, title on desktop */}
       {isMobile ? (
         <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: 17, color: C.primary, letterSpacing: '-0.5px' }}>
@@ -763,122 +747,6 @@ function Proveedores({ isMobile }) {
   )
 }
 
-// ─── ÓRDENES ─────────────────────────────────────────────────────────────────
-const STEP_LABELS = ['Solicitado', 'Aprobado', 'Enviado', 'Recibido']
-const stepFor = (e) => ({ Borrador: 0, Pendiente: 1, Aprobada: 2, Urgente: 2, 'En tránsito': 3, Completada: 4 }[e] ?? 1)
-
-function Ordenes({ isMobile }) {
-  const [filtro, setFiltro] = useState('Todas')
-  const [modal,  setModal]  = useState(null)
-  const filtMap = { Borradores: 'Borrador', 'Pendiente aprobación': 'Pendiente', Aprobadas: 'Aprobada', Urgentes: 'Urgente' }
-  const list = filtro === 'Todas' ? ordenes : ordenes.filter(o => o.estado === filtMap[filtro])
-  const oc = modal ? ordenes.find(o => o.oc === modal) : null
-
-  return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 14px' : 24, display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? 10 : 12 }}>
-        {[
-          { l: 'OC del Mes',         v: '34',          c: C.text    },
-          { l: 'Bajo Acuerdo Marco', v: '26 (76%)',    c: C.primary },
-          { l: 'Urgentes',           v: '3',           c: C.danger  },
-          { l: 'Ahorro del Mes',     v: 'US$ 48,200',  c: C.primary },
-        ].map(({ l, v, c }) => (
-          <Card key={l} className="px-4 py-3">
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: isMobile ? 10 : 11, color: C.muted }}>{l}</div>
-            <div style={{ fontFamily: 'Inter', fontWeight: 900, fontSize: isMobile ? 18 : 22, color: c, marginTop: 4 }}>{v}</div>
-          </Card>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
-        {['Todas', 'Borradores', 'Pendiente aprobación', 'Aprobadas', 'Urgentes'].map(f => (
-          <button key={f} onClick={() => setFiltro(f)}
-            style={{ padding: '6px 12px', borderRadius: 8, fontFamily: 'IBM Plex Mono', fontSize: isMobile ? 11 : 12, background: filtro === f ? `${C.primary}20` : C.card, color: filtro === f ? C.primary : C.muted, border: `1px solid ${filtro === f ? C.primary : C.border}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {f}
-          </button>
-        ))}
-      </div>
-
-      <Card className="p-4" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'IBM Plex Mono', fontSize: 12, minWidth: 680 }}>
-          <thead>
-            <tr style={{ color: C.muted, borderBottom: `1px solid ${C.border}` }}>
-              {['N° OC', 'Fecha', 'Proveedor', 'Monto USD', 'Estado', 'Lead', ''].map(h => (
-                <th key={h} style={{ padding: '0 12px 8px 0', textAlign: 'left', fontWeight: 500 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((o, i) => (
-              <tr key={i} style={{ borderBottom: `1px solid ${C.border}40`, color: C.text }}>
-                <td style={{ padding: '10px 12px 10px 0', color: C.primary }}>{o.oc}</td>
-                <td style={{ padding: '10px 12px 10px 0', color: C.muted }}>{o.fecha}</td>
-                <td style={{ padding: '10px 12px 10px 0', fontWeight: 600 }}>{o.proveedor}</td>
-                <td style={{ padding: '10px 12px 10px 0', fontWeight: 600 }}>{fmt(o.monto)}</td>
-                <td style={{ padding: '10px 12px 10px 0' }}><Badge>{o.estado}</Badge></td>
-                <td style={{ padding: '10px 12px 10px 0', color: o.lead <= 5 ? C.danger : o.lead <= 10 ? C.warn : C.muted }}>{o.lead}d</td>
-                <td><button onClick={() => setModal(o.oc)} style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.primary, fontFamily: 'IBM Plex Mono', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer' }}><Eye size={12} /></button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-
-      {oc && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', background: 'rgba(13,27,42,0.88)', padding: isMobile ? 0 : 0 }}>
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: isMobile ? '12px 12px 0 0' : 12, padding: 28, width: isMobile ? '100%' : 540, maxHeight: isMobile ? '85vh' : '80vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 16, color: C.text }}>{oc.oc}</div>
-                <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.muted, marginTop: 2 }}>{oc.proveedor} · {fmt(oc.monto)}</div>
-              </div>
-              <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={16} style={{ color: C.muted }} /></button>
-            </div>
-            <div style={{ display: 'flex', marginBottom: 24, position: 'relative' }}>
-              {STEP_LABELS.map((s, i) => {
-                const done = i < stepFor(oc.estado)
-                const active = i === Math.min(stepFor(oc.estado) - 1, 3)
-                const col = done || active ? C.primary : C.border
-                return (
-                  <div key={s} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                    {i < STEP_LABELS.length - 1 && <div style={{ position: 'absolute', top: 14, left: '50%', width: '100%', height: 2, background: done ? C.primary : C.border, zIndex: 0 }} />}
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: done || active ? C.primary : C.bg, color: done || active ? C.bg : C.muted, border: `2px solid ${col}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'IBM Plex Mono', fontWeight: 700, fontSize: 11, zIndex: 1 }}>
-                      {done ? '✓' : i + 1}
-                    </div>
-                    <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, marginTop: 6, color: active || done ? C.text : C.muted }}>{s}</div>
-                  </div>
-                )
-              })}
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'IBM Plex Mono', fontSize: 12, marginBottom: 16, minWidth: 380 }}>
-                <thead>
-                  <tr style={{ color: C.muted, borderBottom: `1px solid ${C.border}` }}>
-                    {['Descripción', 'Unid.', 'Cant.', 'Total'].map(h => <th key={h} style={{ padding: '0 10px 8px 0', textAlign: 'left', fontWeight: 500 }}>{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ocItems.map((it, i) => (
-                    <tr key={i} style={{ borderBottom: `1px solid ${C.border}40`, color: C.text }}>
-                      <td style={{ padding: '8px 10px 8px 0' }}>{it.item}</td>
-                      <td style={{ padding: '8px 10px 8px 0', color: C.muted }}>{it.unidad}</td>
-                      <td style={{ padding: '8px 10px 8px 0' }}>{it.cant}</td>
-                      <td style={{ padding: '8px 0 8px 0', color: C.primary, fontWeight: 600 }}>{fmt(it.total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
-              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.muted }}>Total OC</span>
-              <span style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 16, color: C.primary }}>{fmt(284000)}</span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ─── ACUERDOS MARCO ──────────────────────────────────────────────────────────
 function Acuerdos({ isMobile }) {
@@ -947,7 +815,7 @@ const VIEWS = {
   dashboard:   { comp: Dashboard,   title: 'Dashboard Ejecutivo'    },
   solped:      { comp: Solped,      title: 'Procesamiento SOLPED'   },
   proveedores: { comp: Proveedores, title: 'Maestro de Proveedores' },
-  ordenes:     { comp: Ordenes,     title: 'Órdenes de Compra'      },
+  ordenes:     { comp: OrdenCompra, title: 'Órdenes de Compra'      },
   acuerdos:    { comp: Acuerdos,    title: 'Acuerdos Marco'         },
 }
 
@@ -974,7 +842,7 @@ export default function App() {
       {!isMobile && <Sidebar active={view} onNav={setView} />}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minWidth: 0 }}>
         <Topbar title={title} isMobile={isMobile} viewMode={viewMode} onToggleViewMode={toggleViewMode} />
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', paddingBottom: isMobile ? 56 : 0 }}>
+        <div className="print-content" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', paddingBottom: isMobile ? 56 : 0 }}>
           <View isMobile={isMobile} />
         </div>
       </div>

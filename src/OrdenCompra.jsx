@@ -1,0 +1,423 @@
+import { useState } from 'react'
+
+const C = {
+  bg: '#0D1B2A', card: '#1A2B3C', primary: '#00C896',
+  gold: '#C9A84C', text: '#F0F4F8', muted: '#8BA3B8',
+  border: '#243447', danger: '#EF4444', warn: '#F59E0B',
+}
+
+const today = () => new Date().toISOString().slice(0, 10)
+
+function fmtDate(s) {
+  if (!s) return ''
+  const parts = s.split('-')
+  if (parts.length !== 3) return s
+  const [y, m, d] = parts
+  return `${d}.${m}.${y}`
+}
+
+const mkItem = () => ({
+  id: crypto.randomUUID(),
+  codigo: '', descripcion: '', especificacion: '',
+  unidad: 'UN', cantidad: 1, precioUnitario: 0, fechaEntrega: ''
+})
+
+// ─── EXAMPLE DATA ─────────────────────────────────────────────────────────────
+const EJEMPLO = {
+  numeroOC: '4500047816',
+  fechaEmision: '2021-12-02',
+  emisor: {
+    nombre: 'GOLD FIELDS LA CIMA S.A.',
+    ruc: '20507828915',
+    direccion: 'Av. 28 de Julio 1150, Interior 201-202, Miraflores - Lima',
+    telefono: '7060400'
+  },
+  proveedor: {
+    ruc: '20415531037',
+    razonSocial: 'RECIP. ENVASES Y ESTAMPAD. METALICO',
+    direccion: 'AV. INDUSTRIAL Z.I. LIMA NRO 486',
+    telefono: '5621330',
+    contacto: 'H G SANDI',
+    email: 'reyem@reyemsa.com'
+  },
+  comprador: {
+    nombre: 'Giuliana Lozano',
+    telefono: '7060400',
+    email: 'giuliana.lozano.tawa@goldfields.com'
+  },
+  items: [
+    { id: '1', codigo: '14003059', descripcion: 'CILINDRO METALICO MARRON C/TAPA CON ASA', especificacion: 'USO: SEGÚN MODELO Y CODIGO DE COLORES ADJUNTO; CILINDRO DE 55GAL; FABRICADO BAJO NORMAS INTERNACIONALES EN PLANCHA DE ACERO LAF 0.9MM ESPESOR; ABIERTOS TIPO FRH TAPA REMOVIBLE CON ASA DE 3CM; COLOR CILINDRO: MARRON; TITULO: RESIDUOS ORGANICOS.', unidad: 'UN', cantidad: 1, precioUnitario: 52, fechaEntrega: '2021-12-10' },
+    { id: '2', codigo: '14003060', descripcion: 'CILINDRO METALICO AMARILLO C/TAPA C/ASA', especificacion: 'CILINDRO DE 55GAL; FABRICADO BAJO NORMAS INTERNACIONALES EN PLANCHA DE ACERO LAF 0.9MM; COLOR CILINDRO: AMARILLO; TITULO: RESIDUOS METALICOS.', unidad: 'UN', cantidad: 1, precioUnitario: 52, fechaEntrega: '2021-12-10' },
+    { id: '3', codigo: '14003062', descripcion: 'CILINDRO METALICO AZUL C/TAPA CON ASA', especificacion: 'CILINDRO DE 55GAL; COLOR CILINDRO: AZUL; TITULO: RESIDUOS PAPEL Y CARTON.', unidad: 'UN', cantidad: 1, precioUnitario: 52, fechaEntrega: '2021-12-10' },
+    { id: '4', codigo: '14003063', descripcion: 'CILINDRO METALICO BLANCO C/TAPA CON ASA', especificacion: 'CILINDRO DE 55GAL; COLOR CILINDRO: BLANCO; TITULO: RESIDUOS DE PLASTICO.', unidad: 'UN', cantidad: 1, precioUnitario: 52, fechaEntrega: '2021-12-10' },
+  ],
+  autorizadoPor: 'BRUCE MUTCH',
+  fechaAutorizacion: '2021-12-02',
+  plazoEntrega: 10,
+  lugarEntrega: 'TRC CALLAO',
+  formaPago: 30
+}
+
+const INIT = () => ({
+  numeroOC: '4500047816',
+  fechaEmision: today(),
+  emisor: { nombre: '', ruc: '', direccion: '', telefono: '' },
+  proveedor: { ruc: '', razonSocial: '', direccion: '', telefono: '', contacto: '', email: '' },
+  comprador: { nombre: '', telefono: '', email: '' },
+  items: [mkItem()],
+  autorizadoPor: '',
+  fechaAutorizacion: today(),
+  plazoEntrega: '',
+  lugarEntrega: '',
+  formaPago: 30,
+})
+
+// ─── FORM COMPONENTS ──────────────────────────────────────────────────────────
+function Inp({ label, value, onChange, type = 'text', placeholder, span = 1 }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 5, gridColumn: `span ${span}` }}>
+      <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
+      <input
+        type={type}
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.text, background: `${C.bg}cc`, border: `1px solid ${C.border}`, borderRadius: 6, padding: '7px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+      />
+    </label>
+  )
+}
+
+function Sec({ title, cols, children }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.primary, textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>{title}</span>
+        <div style={{ flex: 1, height: 1, background: C.border }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 10 }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ─── FORM SCREEN ──────────────────────────────────────────────────────────────
+function FormOC({ data, setData, onPreview, isMobile }) {
+  const cols = isMobile ? 2 : 4
+  const set = (k, v) => setData(d => ({ ...d, [k]: v }))
+  const nest = (f, k, v) => setData(d => ({ ...d, [f]: { ...d[f], [k]: v } }))
+  const setItem = (id, k, v) => setData(d => ({ ...d, items: d.items.map(it => it.id === id ? { ...it, [k]: v } : it) }))
+  const addItem = () => setData(d => ({ ...d, items: [...d.items, mkItem()] }))
+  const removeItem = id => setData(d => ({ ...d, items: d.items.filter(it => it.id !== id) }))
+
+  const valorVenta = data.items.reduce((s, it) => s + (Number(it.cantidad) || 0) * (Number(it.precioUnitario) || 0), 0)
+  const igv = valorVenta * 0.18
+  const total = valorVenta + igv
+
+  const cellInp = {
+    fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.text,
+    background: `${C.bg}aa`, border: `1px solid ${C.border}`, borderRadius: 4,
+    padding: '4px 6px', outline: 'none', width: '100%', boxSizing: 'border-box',
+  }
+  const TH = { fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.muted, padding: '0 8px 8px', textAlign: 'left', fontWeight: 500, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap' }
+  const TD = { padding: '6px 8px', verticalAlign: 'top' }
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px 14px' : '20px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* CABECERA */}
+      <Sec title="Cabecera" cols={cols}>
+        <Inp label="N° Orden de Compra" value={data.numeroOC} onChange={v => set('numeroOC', v)} span={isMobile ? 1 : 2} />
+        <Inp label="Fecha de emisión" value={data.fechaEmision} onChange={v => set('fechaEmision', v)} type="date" span={isMobile ? 1 : 2} />
+      </Sec>
+
+      {/* EMISOR */}
+      <Sec title="Emisor — empresa que emite la OC" cols={cols}>
+        <Inp label="Nombre empresa" value={data.emisor.nombre} onChange={v => nest('emisor', 'nombre', v)} span={isMobile ? 2 : 2} />
+        <Inp label="RUC" value={data.emisor.ruc} onChange={v => nest('emisor', 'ruc', v)} />
+        <Inp label="Teléfono" value={data.emisor.telefono} onChange={v => nest('emisor', 'telefono', v)} />
+        <Inp label="Dirección" value={data.emisor.direccion} onChange={v => nest('emisor', 'direccion', v)} span={cols} />
+      </Sec>
+
+      {/* PROVEEDOR */}
+      <Sec title="Proveedor" cols={cols}>
+        <Inp label="RUC" value={data.proveedor.ruc} onChange={v => nest('proveedor', 'ruc', v)} />
+        <Inp label="Razón Social" value={data.proveedor.razonSocial} onChange={v => nest('proveedor', 'razonSocial', v)} span={isMobile ? 1 : 3} />
+        <Inp label="Dirección" value={data.proveedor.direccion} onChange={v => nest('proveedor', 'direccion', v)} span={cols} />
+        <Inp label="Teléfono" value={data.proveedor.telefono} onChange={v => nest('proveedor', 'telefono', v)} />
+        <Inp label="Contacto" value={data.proveedor.contacto} onChange={v => nest('proveedor', 'contacto', v)} />
+        <Inp label="Email" value={data.proveedor.email} onChange={v => nest('proveedor', 'email', v)} span={isMobile ? 2 : 2} />
+      </Sec>
+
+      {/* COMPRADOR */}
+      <Sec title="Comprador — responsable interno" cols={isMobile ? 2 : 3}>
+        <Inp label="Nombre" value={data.comprador.nombre} onChange={v => nest('comprador', 'nombre', v)} />
+        <Inp label="Teléfono" value={data.comprador.telefono} onChange={v => nest('comprador', 'telefono', v)} />
+        <Inp label="Email" value={data.comprador.email} onChange={v => nest('comprador', 'email', v)} span={isMobile ? 2 : 1} />
+      </Sec>
+
+      {/* ÍTEMS */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: C.primary, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Ítems</span>
+          <div style={{ flex: 1, height: 1, background: C.border }} />
+          <button onClick={addItem}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 6, background: `${C.primary}18`, border: `1px solid ${C.primary}40`, color: C.primary, cursor: 'pointer', fontFamily: 'IBM Plex Mono', fontSize: 11 }}>
+            + Agregar ítem
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'IBM Plex Mono', fontSize: 12, minWidth: 900 }}>
+            <thead>
+              <tr>
+                <th style={{ ...TH, width: 80 }}>Código</th>
+                <th style={{ ...TH, width: 190 }}>Descripción</th>
+                <th style={TH}>Especificación técnica</th>
+                <th style={{ ...TH, width: 55 }}>UM</th>
+                <th style={{ ...TH, width: 75 }}>Cant.</th>
+                <th style={{ ...TH, width: 95 }}>P. Unit.</th>
+                <th style={{ ...TH, width: 95, textAlign: 'right' }}>Subtotal</th>
+                <th style={{ ...TH, width: 125 }}>F. Entrega</th>
+                <th style={{ ...TH, width: 34 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map(it => {
+                const sub = (Number(it.cantidad) || 0) * (Number(it.precioUnitario) || 0)
+                return (
+                  <tr key={it.id} style={{ borderTop: `1px solid ${C.border}` }}>
+                    <td style={TD}><input value={it.codigo} onChange={e => setItem(it.id, 'codigo', e.target.value)} style={cellInp} /></td>
+                    <td style={TD}><input value={it.descripcion} onChange={e => setItem(it.id, 'descripcion', e.target.value)} style={cellInp} /></td>
+                    <td style={TD}><textarea value={it.especificacion} onChange={e => setItem(it.id, 'especificacion', e.target.value)} rows={2} style={{ ...cellInp, resize: 'vertical', minHeight: 52 }} /></td>
+                    <td style={TD}><input value={it.unidad} onChange={e => setItem(it.id, 'unidad', e.target.value)} style={cellInp} /></td>
+                    <td style={TD}><input type="number" min="0" value={it.cantidad} onChange={e => setItem(it.id, 'cantidad', e.target.value)} style={{ ...cellInp, textAlign: 'right' }} /></td>
+                    <td style={TD}><input type="number" min="0" step="0.01" value={it.precioUnitario} onChange={e => setItem(it.id, 'precioUnitario', e.target.value)} style={{ ...cellInp, textAlign: 'right' }} /></td>
+                    <td style={{ ...TD, textAlign: 'right', fontWeight: 600, color: C.primary, verticalAlign: 'middle' }}>{sub.toFixed(2)}</td>
+                    <td style={TD}><input type="date" value={it.fechaEntrega} onChange={e => setItem(it.id, 'fechaEntrega', e.target.value)} style={cellInp} /></td>
+                    <td style={{ ...TD, verticalAlign: 'middle' }}>
+                      <button onClick={() => removeItem(it.id)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 4, background: `${C.danger}15`, border: `1px solid ${C.danger}40`, color: C.danger, cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>×</button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr style={{ borderTop: `2px solid ${C.border}` }}>
+                <td colSpan={5} />
+                <td style={{ padding: '7px 8px', fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, textAlign: 'right' }}>Valor Venta</td>
+                <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 12, color: C.text }}>{valorVenta.toFixed(2)}</td>
+                <td colSpan={2} />
+              </tr>
+              <tr>
+                <td colSpan={5} />
+                <td style={{ padding: '4px 8px', fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted, textAlign: 'right' }}>IGV 18%</td>
+                <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 11, color: C.muted }}>{igv.toFixed(2)}</td>
+                <td colSpan={2} />
+              </tr>
+              <tr style={{ borderTop: `1px solid ${C.border}` }}>
+                <td colSpan={5} />
+                <td style={{ padding: '7px 8px', fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 700, color: C.primary, textAlign: 'right' }}>TOTAL</td>
+                <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'Inter', fontSize: 15, fontWeight: 900, color: C.primary }}>{total.toFixed(2)}</td>
+                <td colSpan={2} />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* CONDICIONES */}
+      <Sec title="Condiciones" cols={cols}>
+        <Inp label="Plazo de entrega (días)" value={data.plazoEntrega} onChange={v => set('plazoEntrega', v)} type="number" />
+        <Inp label="Lugar de entrega" value={data.lugarEntrega} onChange={v => set('lugarEntrega', v)} />
+        <Inp label="Forma de pago (días)" value={data.formaPago} onChange={v => set('formaPago', v)} type="number" />
+        <Inp label="Autorizado por" value={data.autorizadoPor} onChange={v => set('autorizadoPor', v)} />
+        <Inp label="Fecha de autorización" value={data.fechaAutorizacion} onChange={v => set('fechaAutorizacion', v)} type="date" span={isMobile ? 2 : 2} />
+      </Sec>
+
+      {/* ACTION BUTTONS */}
+      <div style={{ display: 'flex', gap: 10, paddingBottom: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <button onClick={() => setData(EJEMPLO)}
+          style={{ padding: '10px 20px', borderRadius: 8, background: 'none', border: `1px solid ${C.border}`, color: C.muted, fontFamily: 'IBM Plex Mono', fontSize: 12, cursor: 'pointer' }}>
+          Cargar ejemplo
+        </button>
+        <button onClick={onPreview}
+          style={{ padding: '10px 28px', borderRadius: 8, background: C.primary, border: 'none', color: C.bg, fontFamily: 'IBM Plex Mono', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          Ver documento →
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── DOCUMENT PREVIEW ─────────────────────────────────────────────────────────
+function DocOC({ data, onBack }) {
+  const { items = [] } = data
+  const valorVenta = items.reduce((s, it) => s + (Number(it.cantidad) || 0) * (Number(it.precioUnitario) || 0), 0)
+  const igv = valorVenta * 0.18
+  const total = valorVenta + igv
+
+  const MONO = { fontFamily: "'Courier New', Courier, monospace" }
+  const B1 = '1px solid #333'
+  const B2 = '1px solid #888'
+
+  const thDoc = { ...MONO, background: '#e0e0e0', fontWeight: 600, padding: '4px 6px', border: B2, fontSize: 10, textAlign: 'center', verticalAlign: 'middle' }
+  const td = (extra = {}) => ({ ...MONO, padding: '3px 5px', border: B2, verticalAlign: 'top', fontSize: 11, ...extra })
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', background: '#c8c8c8', padding: '16px 10px' }}>
+
+      {/* FLOATING CONTROLS — hidden on print */}
+      <div className="no-print" style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <button onClick={onBack}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8, background: C.card, border: `1px solid ${C.border}`, color: C.text, fontFamily: 'IBM Plex Mono', fontSize: 12, cursor: 'pointer' }}>
+          ← Volver al formulario
+        </button>
+        <button onClick={() => window.print()}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 22px', borderRadius: 8, background: C.primary, border: 'none', color: C.bg, fontFamily: 'IBM Plex Mono', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+          Imprimir / Guardar PDF
+        </button>
+      </div>
+
+      {/* DOCUMENT */}
+      <div id="oc-document" style={{ ...MONO, background: '#fff', maxWidth: 900, margin: '0 auto', fontSize: 11, color: '#000', lineHeight: 1.45 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', ...MONO, fontSize: 11, color: '#000' }}>
+          <colgroup>
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '34%' }} />
+            <col style={{ width: '5%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '17%' }} />
+          </colgroup>
+          <tbody>
+
+            {/* ── HEADER ROW ── */}
+            <tr>
+              <td colSpan={8} style={{ border: B1, padding: '8px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 88, height: 44, border: '1px solid #bbb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#aaa', flexShrink: 0, borderRadius: 2, letterSpacing: 2 }}>LOGO</div>
+                  <div style={{ flex: 1, textAlign: 'center', fontWeight: 'bold', fontSize: 13, letterSpacing: 0.5 }}>
+                    Orden De Compra N°&nbsp;{data.numeroOC}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#555', whiteSpace: 'nowrap' }}>
+                    <div>Fecha: {fmtDate(data.fechaEmision)}</div>
+                    <div>Página 1 de 1</div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            {/* ── INFO BLOCK ── */}
+            <tr>
+              <td colSpan={4} style={{ border: B1, padding: '8px 10px', verticalAlign: 'top' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: 2 }}>{data.emisor.nombre}</div>
+                <div>RUC: {data.emisor.ruc}</div>
+                <div>DIRECCION: {data.emisor.direccion}</div>
+                <div>Teléfono: {data.emisor.telefono}</div>
+                <div style={{ height: 7 }} />
+                <div style={{ fontWeight: 'bold', marginBottom: 2 }}>PROVEEDOR</div>
+                <div>RUC: {data.proveedor.ruc}</div>
+                <div>Razón Social: {data.proveedor.razonSocial}</div>
+                <div>Dirección: {data.proveedor.direccion}</div>
+                {data.proveedor.telefono && <div>Teléfono: {data.proveedor.telefono}</div>}
+                {data.proveedor.contacto && <div>Contacto: {data.proveedor.contacto}</div>}
+                {data.proveedor.email && <div>E-mail: {data.proveedor.email}</div>}
+              </td>
+              <td colSpan={4} style={{ border: B1, padding: '8px 10px', verticalAlign: 'top' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: 2 }}>COMPRADOR</div>
+                <div>{'Nombre  : '}{data.comprador.nombre}</div>
+                <div>{'Teléfono: '}{data.comprador.telefono}</div>
+                <div>{'E-mail  : '}{data.comprador.email}</div>
+                <div style={{ height: 7 }} />
+                <div style={{ fontWeight: 'bold', marginBottom: 2 }}>FACTURAR A:</div>
+                <div>{data.emisor.nombre}</div>
+                <div>RUC: {data.emisor.ruc}</div>
+                <div>Dirección: {data.emisor.direccion}</div>
+              </td>
+            </tr>
+
+            {/* ── ITEMS HEADER ── */}
+            <tr>
+              {['ITEM', 'CÓDIGO', 'DESCRIPCIÓN', 'UM', 'CANT', 'P.UNIT', 'SUBTOTAL', 'F.ENTR'].map(h => (
+                <th key={h} style={thDoc}>{h}</th>
+              ))}
+            </tr>
+
+            {/* ── ITEM ROWS ── */}
+            {items.map((it, idx) => {
+              const sub = (Number(it.cantidad) || 0) * (Number(it.precioUnitario) || 0)
+              return (
+                <tr key={it.id} className="no-break">
+                  <td style={td({ textAlign: 'center' })}>{String((idx + 1) * 10).padStart(5, '0')}</td>
+                  <td style={td()}>{it.codigo}</td>
+                  <td style={td()}>
+                    <div style={{ fontWeight: 500 }}>{it.descripcion}</div>
+                    {it.especificacion && (
+                      <div style={{ fontSize: 9, color: '#555', marginTop: 3, lineHeight: 1.4 }}>{it.especificacion}</div>
+                    )}
+                  </td>
+                  <td style={td({ textAlign: 'center' })}>{it.unidad}</td>
+                  <td style={td({ textAlign: 'right' })}>{it.cantidad}</td>
+                  <td style={td({ textAlign: 'right' })}>{Number(it.precioUnitario).toFixed(2)}</td>
+                  <td style={td({ textAlign: 'right', fontWeight: 600 })}>{sub.toFixed(2)}</td>
+                  <td style={td({ textAlign: 'center' })}>{fmtDate(it.fechaEntrega)}</td>
+                </tr>
+              )
+            })}
+
+            {/* ── TOTALS ── */}
+            <tr>
+              <td colSpan={8} style={{ border: B1, padding: '5px 12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <table style={{ borderCollapse: 'collapse', ...MONO, fontSize: 11 }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: '2px 16px 2px 0', textAlign: 'right' }}>VALOR VENTA&nbsp;&nbsp;US $</td>
+                        <td style={{ padding: '2px 0', textAlign: 'right', minWidth: 80 }}>{valorVenta.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '2px 16px 2px 0', textAlign: 'right' }}>VALOR IGV</td>
+                        <td style={{ padding: '2px 0', textAlign: 'right' }}>{igv.toFixed(2)}</td>
+                      </tr>
+                      <tr style={{ borderTop: '1px solid #999' }}>
+                        <td style={{ padding: '3px 16px 2px 0', textAlign: 'right', fontWeight: 'bold' }}>TOTAL</td>
+                        <td style={{ padding: '3px 0 2px', textAlign: 'right', fontWeight: 'bold' }}>{total.toFixed(2)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+
+            {/* ── FOOTER ── */}
+            <tr>
+              <td colSpan={8} style={{ border: B1, padding: '7px 12px' }}>
+                <div style={{ marginBottom: 3 }}>
+                  Autorizado Por:&nbsp;<strong>{data.autorizadoPor}</strong>
+                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Fecha: {fmtDate(data.fechaAutorizacion)}
+                </div>
+                {data.plazoEntrega && <div>- PLAZO DE ENTREGA: {data.plazoEntrega} DIAS.</div>}
+                {data.lugarEntrega && <div>- LUGAR DE ENTREGA: {data.lugarEntrega}.</div>}
+                {data.formaPago && <div>- FORMA DE PAGO: {data.formaPago} DIAS.</div>}
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
+export default function OrdenCompra({ isMobile }) {
+  const [screen, setScreen] = useState('form')
+  const [data, setData] = useState(INIT)
+
+  if (screen === 'preview') return <DocOC data={data} onBack={() => setScreen('form')} />
+  return <FormOC data={data} setData={setData} onPreview={() => setScreen('preview')} isMobile={isMobile} />
+}

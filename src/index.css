@@ -5,3 +5,17 @@ body { background: #0D1B2A; overflow: hidden; -webkit-font-smoothing: antialiase
 ::-webkit-scrollbar-track { background: #0D1B2A; }
 ::-webkit-scrollbar-thumb { background: #243447; border-radius: 4px; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+@media print {
+  .no-print { display: none !important; }
+  @page { size: A4; margin: 15mm; }
+  html, body, #root { height: auto !important; overflow: visible !important; background: white !important; }
+  #root > div { height: auto !important; overflow: visible !important; display: block !important; background: white !important; }
+  .print-content { overflow: visible !important; height: auto !important; display: block !important; flex: none !important; background: white !important; padding-bottom: 0 !important; }
+  body { font-family: 'Courier New', monospace; font-size: 8pt; color: #000; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background-color: #e0e0e0 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  th, td { border: 0.5pt solid #666; padding: 2pt 4pt; }
+  .page-break { page-break-before: always; }
+  .no-break { page-break-inside: avoid; }
+}
