@@ -30,27 +30,27 @@ const spendData = [
   { mes: 'Abr', gasto: 2450, ahorro: 142 }, { mes: 'May', gasto: 2890, ahorro: 169 },
 ]
 const recentOCs = [
-  { oc: 'OC-2025-0341', proveedor: 'Famesa Explosivos', cat: 'Explosivos', monto: 284000, estado: 'Aprobada' },
-  { oc: 'OC-2025-0340', proveedor: 'Orica Mining', cat: 'Reactivos', monto: 156800, estado: 'Pendiente' },
-  { oc: 'OC-2025-0339', proveedor: 'Grupo Ferreyros', cat: 'Repuestos OEM', monto: 98400, estado: 'Aprobada' },
-  { oc: 'OC-2025-0338', proveedor: 'Air Products', cat: 'Combustibles', monto: 312000, estado: 'Urgente' },
-  { oc: 'OC-2025-0337', proveedor: 'MSA Safety', cat: 'EPP', monto: 42600, estado: 'Aprobada' },
+  { oc: 'OC-2025-0341', proveedor: 'Pirotec Andina S.A.',     cat: 'Explosivos',    monto: 284000, estado: 'Aprobada' },
+  { oc: 'OC-2025-0340', proveedor: 'Chemindus Perú S.A.',     cat: 'Reactivos',     monto: 156800, estado: 'Pendiente' },
+  { oc: 'OC-2025-0339', proveedor: 'Maquinex del Perú S.A.',  cat: 'Repuestos OEM', monto: 98400,  estado: 'Aprobada' },
+  { oc: 'OC-2025-0338', proveedor: 'GasAndes S.A.C.',         cat: 'Combustibles',  monto: 312000, estado: 'Urgente' },
+  { oc: 'OC-2025-0337', proveedor: 'SegurPro Perú S.A.',      cat: 'EPP',           monto: 42600,  estado: 'Aprobada' },
 ]
 const alertas = [
-  { tipo: 'warn',    icon: FileText,     msg: 'Contrato EPP Seguridad vence en 18 días',       sub: 'MSA Safety · Marco #FA-2025-008' },
-  { tipo: 'danger',  icon: Package,      msg: 'Stock crítico: Cianuro de Sodio — 12 días',       sub: 'Mina Orcopampa · Reorden sugerido: 48 t' },
-  { tipo: 'warn',    icon: Users,        msg: 'Evaluación anual pendiente — Grupo Ferreyros',    sub: 'Última evaluación: Nov 2024 · Score: 74' },
-  { tipo: 'success', icon: CheckCircle,  msg: 'Acuerdo marco Explosivos renovado',               sub: 'Famesa Explosivos · Vigente hasta May 2026' },
+  { tipo: 'warn',    icon: FileText,    msg: 'Contrato EPP Seguridad vence en 18 días',          sub: 'SegurPro Perú · Marco #FA-2025-008' },
+  { tipo: 'danger',  icon: Package,     msg: 'Stock crítico: Cianuro de Sodio — 12 días',         sub: 'Unidad Cerro Azul · Reorden sugerido: 48 t' },
+  { tipo: 'warn',    icon: Users,       msg: 'Evaluación anual pendiente — Maquinex del Perú',    sub: 'Última evaluación: Nov 2024 · Score: 74' },
+  { tipo: 'success', icon: CheckCircle, msg: 'Acuerdo marco Explosivos renovado',                 sub: 'Pirotec Andina · Vigente hasta May 2026' },
 ]
 const proveedoresStatic = [
-  { id: 1, nombre: 'Famesa Explosivos S.A.', ruc: '20100084136', cats: ['Explosivos', 'Insumos'],       score: 92, estado: 'Homologado',  otif: 96 },
-  { id: 2, nombre: 'Orica Mining Services',  ruc: '20389456123', cats: ['Reactivos', 'Explosivos'],     score: 88, estado: 'Homologado',  otif: 91 },
-  { id: 3, nombre: 'Grupo Ferreyros S.A.',   ruc: '20100128056', cats: ['Repuestos OEM', 'Maquinaria'], score: 74, estado: 'Condicional', otif: 82 },
-  { id: 4, nombre: 'Air Products Perú',      ruc: '20512345678', cats: ['Gases', 'Combustibles'],       score: 85, estado: 'Homologado',  otif: 94 },
-  { id: 5, nombre: 'MSA Safety Perú',        ruc: '20456789012', cats: ['EPP', 'Seguridad'],            score: 79, estado: 'Homologado',  otif: 87 },
-  { id: 6, nombre: 'SKF del Perú',           ruc: '20345678901', cats: ['Rodamientos', 'Repuestos'],    score: 55, estado: 'Condicional', otif: 71 },
-  { id: 7, nombre: 'Exsa S.A.',              ruc: '20100234567', cats: ['Explosivos'],                  score: 38, estado: 'Pendiente',   otif: 0  },
-  { id: 8, nombre: 'Komatsu Mitsui',         ruc: '20234567890', cats: ['Maquinaria', 'Repuestos OEM'], score: 95, estado: 'Homologado',  otif: 98 },
+  { id: 1, nombre: 'Pirotec Andina S.A.',      ruc: '20601234001', cats: ['Explosivos', 'Insumos'],       score: 92, estado: 'Homologado',  otif: 96 },
+  { id: 2, nombre: 'Chemindus Perú S.A.',      ruc: '20601234002', cats: ['Reactivos', 'Explosivos'],     score: 88, estado: 'Homologado',  otif: 91 },
+  { id: 3, nombre: 'Maquinex del Perú S.A.',   ruc: '20601234003', cats: ['Repuestos OEM', 'Maquinaria'], score: 74, estado: 'Condicional', otif: 82 },
+  { id: 4, nombre: 'GasAndes S.A.C.',          ruc: '20601234004', cats: ['Gases', 'Combustibles'],       score: 85, estado: 'Homologado',  otif: 94 },
+  { id: 5, nombre: 'SegurPro Perú S.A.',       ruc: '20601234005', cats: ['EPP', 'Seguridad'],            score: 79, estado: 'Homologado',  otif: 87 },
+  { id: 6, nombre: 'Rodacol S.A.C.',           ruc: '20601234006', cats: ['Rodamientos', 'Repuestos'],    score: 55, estado: 'Condicional', otif: 71 },
+  { id: 7, nombre: 'Pyrotec Industrial S.A.',  ruc: '20601234007', cats: ['Explosivos'],                  score: 38, estado: 'Pendiente',   otif: 0  },
+  { id: 8, nombre: 'Metalmaq Industrial S.R.L.',ruc: '20601234008', cats: ['Maquinaria', 'Repuestos OEM'], score: 95, estado: 'Homologado',  otif: 98 },
 ]
 const evalHistory = [
   { fecha: 'Mar 2025', financiero: 90, tecnico: 94, legal: 92, ambiental: 91 },
@@ -65,28 +65,28 @@ const provScores = {
 }
 const acuerdos = {
   vigentes: [
-    { nombre: 'Suministro Explosivos ANFO', proveedor: 'Famesa Explosivos', cat: 'Explosivos',  valor: 2400000, vence: '15/05/2026', ejec: 38 },
-    { nombre: 'Reactivos Flotación Cu',     proveedor: 'Orica Mining',       cat: 'Reactivos',   valor: 1800000, vence: '30/09/2025', ejec: 71 },
-    { nombre: 'Repuestos Flota Mina',       proveedor: 'Komatsu Mitsui',     cat: 'Maquinaria',  valor: 3200000, vence: '31/12/2025', ejec: 44 },
-    { nombre: 'EPP Estándar Corporativo',   proveedor: 'MSA Safety',         cat: 'EPP',         valor: 480000,  vence: '30/06/2025', ejec: 82 },
-    { nombre: 'Combustibles Planta',        proveedor: 'Air Products',       cat: 'Combustibles',valor: 960000,  vence: '28/02/2026', ejec: 29 },
-    { nombre: 'Rodamientos SKF Críticos',   proveedor: 'SKF del Perú',       cat: 'Repuestos',   valor: 240000,  vence: '31/10/2025', ejec: 56 },
-    { nombre: 'Insumos Lab Metalurgia',     proveedor: 'Merck Perú',         cat: 'Reactivos',   valor: 180000,  vence: '15/11/2025', ejec: 48 },
-    { nombre: 'Vestuario Industrial',       proveedor: 'Workteam SAC',       cat: 'EPP',         valor: 120000,  vence: '31/08/2025', ejec: 65 },
+    { nombre: 'Suministro Explosivos ANFO',  proveedor: 'Pirotec Andina S.A.',      cat: 'Explosivos',   valor: 2400000, vence: '15/05/2026', ejec: 38 },
+    { nombre: 'Reactivos Flotación Cu',      proveedor: 'Chemindus Perú S.A.',      cat: 'Reactivos',    valor: 1800000, vence: '30/09/2025', ejec: 71 },
+    { nombre: 'Repuestos Flota Mina',        proveedor: 'Metalmaq Industrial S.R.L.',cat: 'Maquinaria',   valor: 3200000, vence: '31/12/2025', ejec: 44 },
+    { nombre: 'EPP Estándar Corporativo',    proveedor: 'SegurPro Perú S.A.',       cat: 'EPP',          valor: 480000,  vence: '30/06/2025', ejec: 82 },
+    { nombre: 'Combustibles Planta',         proveedor: 'GasAndes S.A.C.',          cat: 'Combustibles', valor: 960000,  vence: '28/02/2026', ejec: 29 },
+    { nombre: 'Rodamientos Críticos Mina',   proveedor: 'Rodacol S.A.C.',           cat: 'Repuestos',    valor: 240000,  vence: '31/10/2025', ejec: 56 },
+    { nombre: 'Insumos Lab Metalurgia',      proveedor: 'Laborindus S.A.C.',        cat: 'Reactivos',    valor: 180000,  vence: '15/11/2025', ejec: 48 },
+    { nombre: 'Vestuario Industrial',        proveedor: 'Segurindus Perú S.A.C.',   cat: 'EPP',          valor: 120000,  vence: '31/08/2025', ejec: 65 },
   ],
   porRenovar: [
-    { nombre: 'Neumáticos Flota Mina',  proveedor: 'Bridgestone Perú', cat: 'Repuestos OEM', valor: 560000, vence: '30/06/2025', ejec: 91 },
-    { nombre: 'Gases Industriales',     proveedor: 'Air Liquide',      cat: 'Gases',         valor: 320000, vence: '15/07/2025', ejec: 87 },
-    { nombre: 'Aceites y Lubricantes',  proveedor: 'Mobil Perú',       cat: 'Insumos',       valor: 240000, vence: '20/07/2025', ejec: 79 },
+    { nombre: 'Neumáticos Flota Mina',   proveedor: 'Neumatex Andina S.A.',  cat: 'Repuestos OEM', valor: 560000, vence: '30/06/2025', ejec: 91 },
+    { nombre: 'Gases Industriales',      proveedor: 'GasIndus S.A.C.',       cat: 'Gases',         valor: 320000, vence: '15/07/2025', ejec: 87 },
+    { nombre: 'Aceites y Lubricantes',   proveedor: 'Lubriandes S.A.',       cat: 'Insumos',       valor: 240000, vence: '20/07/2025', ejec: 79 },
   ],
   vencidos: [
-    { nombre: 'Acero Estructural', proveedor: 'Aceros Arequipa', cat: 'Materiales', valor: 180000, vence: '30/04/2025', ejec: 100 },
+    { nombre: 'Acero Estructural',       proveedor: 'Siderúrgica del Sur S.A.', cat: 'Materiales', valor: 180000, vence: '30/04/2025', ejec: 100 },
   ],
 }
 const ahorroComp = [
   { name: 'Explosivos ANFO', acuerdo: 1800, spot: 2250 },
   { name: 'Reactivos Cu',    acuerdo: 2200, spot: 2650 },
-  { name: 'Repuestos Komatsu',acuerdo: 3100, spot: 3800 },
+  { name: 'Repuestos Mina',  acuerdo: 3100, spot: 3800 },
   { name: 'EPP Estándar',    acuerdo: 420,  spot: 510  },
   { name: 'Combustibles',    acuerdo: 890,  spot: 1050 },
 ]
@@ -171,9 +171,9 @@ const CATEGORIAS = [
 ]
 
 const SAMPLE_PROVEEDORES = [
-  { id: '1', razonSocial: 'VULCO PERU S.A.', ruc: '20100674000', nombreComercial: 'Vulco', contactoNombre: 'Marco Salinas', contactoEmail: 'ventas@vulco.com.pe', contactoTelefono: '01-234-5678', categorias: ['Repuestos', 'Servicios'], notas: 'Proveedor homologado para repuestos de desgaste y revestimientos.', fechaAlta: '2024-01-15', activo: true },
-  { id: '2', razonSocial: 'ELECTRO FERRO CENTRO S.A.C.', ruc: '20503141380', nombreComercial: 'EFC', contactoNombre: 'Rosa Soto', contactoEmail: 'rsoto@efc.com.pe', contactoTelefono: '01-456-7890', categorias: ['Eléctrico / E&I', 'Repuestos'], notas: 'Ferretería industrial y eléctricos. Lead time 3–5 días.', fechaAlta: '2024-03-10', activo: true },
-  { id: '3', razonSocial: 'MERCANTIL INTERAMERICANA S.A.C.', ruc: '20171545670', nombreComercial: 'Mercantil', contactoNombre: 'Luis Quispe', contactoEmail: 'lquispe@mercantil.pe', contactoTelefono: '01-567-8901', categorias: ['Reactivos', 'Lubricantes'], notas: 'Proveedor de reactivos para proceso de flotación.', fechaAlta: '2024-05-20', activo: true },
+  { id: '1', razonSocial: 'INSUANDINA S.A.C.',          ruc: '20601240001', nombreComercial: 'Insuandina',  contactoNombre: 'Marco Tello',   contactoEmail: 'ventas@insuandina.com.pe',  contactoTelefono: '01-234-5678', categorias: ['Repuestos', 'Servicios'],        notas: 'Proveedor homologado para repuestos de desgaste y revestimientos.',   fechaAlta: '2024-01-15', activo: true  },
+  { id: '2', razonSocial: 'ELECTRO ANDINO CENTRAL S.A.C.',ruc: '20601240002', nombreComercial: 'EAC',         contactoNombre: 'Rosa Quispe',   contactoEmail: 'rquispe@eacperu.com.pe',    contactoTelefono: '01-456-7890', categorias: ['Eléctrico / E&I', 'Repuestos'], notas: 'Ferretería industrial y eléctricos. Lead time 3–5 días.',              fechaAlta: '2024-03-10', activo: true  },
+  { id: '3', razonSocial: 'REACTIVOS Y QUIMICOS ANDINOS S.A.C.', ruc: '20601240003', nombreComercial: 'RQA', contactoNombre: 'Luis Paredes',  contactoEmail: 'lparedes@rqagroup.pe',      contactoTelefono: '01-567-8901', categorias: ['Reactivos', 'Lubricantes'],      notas: 'Proveedor de reactivos para proceso de flotación.',                    fechaAlta: '2024-05-20', activo: true  },
 ]
 
 const PROV_KEY = 'minprocure_proveedores'
@@ -258,8 +258,8 @@ function Sidebar({ active, onNav }) {
       </div>
       {/* Tenant selector */}
       <div style={{ margin: '10px 12px', padding: '8px 12px', borderRadius: 6, background: C.bg, border: `1px solid ${C.border}` }}>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: C.text }}>Minera Buenaventura</div>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>S.A. — Unidad Orcopampa</div>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: C.text }}>Minerales del Ande S.A.A.</div>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: C.muted }}>Unidad Cerro Azul</div>
         <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: C.gold, background: `${C.gold}18`, border: `1px solid ${C.gold}40`, padding: '1px 8px', borderRadius: 3, display: 'inline-block', marginTop: 4, fontWeight: 600 }}>DEMO</span>
       </div>
       {/* Navigation */}

@@ -27,36 +27,36 @@ const mkItem = () => ({
 // ─── EXAMPLE DATA ─────────────────────────────────────────────────────────────
 const EJEMPLO = {
   numeroOC: '4500047816',
-  fechaEmision: '2021-12-02',
+  fechaEmision: '2025-05-20',
   emisor: {
-    nombre: 'GOLD FIELDS LA CIMA S.A.',
-    ruc: '20507828915',
-    direccion: 'Av. 28 de Julio 1150, Interior 201-202, Miraflores - Lima',
-    telefono: '7060400'
+    nombre: 'MINERALES DEL ANDE S.A.A.',
+    ruc: '20543219876',
+    direccion: 'Av. República de Panamá 3030, Piso 8, San Isidro - Lima',
+    telefono: '(01) 611-8800'
   },
   proveedor: {
-    ruc: '20415531037',
-    razonSocial: 'RECIP. ENVASES Y ESTAMPAD. METALICO',
-    direccion: 'AV. INDUSTRIAL Z.I. LIMA NRO 486',
-    telefono: '5621330',
-    contacto: 'H G SANDI',
-    email: 'reyem@reyemsa.com'
+    ruc: '20489123456',
+    razonSocial: 'ENVASES INDUSTRIALES DEL NORTE S.A.C.',
+    direccion: 'AV. INDUSTRIAL VILLA EL SALVADOR NRO 821, LIMA',
+    telefono: '(01) 567-8901',
+    contacto: 'R. MENDOZA',
+    email: 'ventas@envasnorte.com.pe'
   },
   comprador: {
-    nombre: 'Giuliana Lozano',
-    telefono: '7060400',
-    email: 'giuliana.lozano.tawa@goldfields.com'
+    nombre: 'Sandra Huanca',
+    telefono: '(01) 611-8800 anexo 214',
+    email: 'sandra.huanca@minandes.com.pe'
   },
   items: [
-    { id: '1', codigo: '14003059', descripcion: 'CILINDRO METALICO MARRON C/TAPA CON ASA', especificacion: 'USO: SEGÚN MODELO Y CODIGO DE COLORES ADJUNTO; CILINDRO DE 55GAL; FABRICADO BAJO NORMAS INTERNACIONALES EN PLANCHA DE ACERO LAF 0.9MM ESPESOR; ABIERTOS TIPO FRH TAPA REMOVIBLE CON ASA DE 3CM; COLOR CILINDRO: MARRON; TITULO: RESIDUOS ORGANICOS.', unidad: 'UN', cantidad: 1, precioUnitario: 52, fechaEntrega: '2021-12-10' },
-    { id: '2', codigo: '14003060', descripcion: 'CILINDRO METALICO AMARILLO C/TAPA C/ASA', especificacion: 'CILINDRO DE 55GAL; FABRICADO BAJO NORMAS INTERNACIONALES EN PLANCHA DE ACERO LAF 0.9MM; COLOR CILINDRO: AMARILLO; TITULO: RESIDUOS METALICOS.', unidad: 'UN', cantidad: 1, precioUnitario: 52, fechaEntrega: '2021-12-10' },
-    { id: '3', codigo: '14003062', descripcion: 'CILINDRO METALICO AZUL C/TAPA CON ASA', especificacion: 'CILINDRO DE 55GAL; COLOR CILINDRO: AZUL; TITULO: RESIDUOS PAPEL Y CARTON.', unidad: 'UN', cantidad: 1, precioUnitario: 52, fechaEntrega: '2021-12-10' },
-    { id: '4', codigo: '14003063', descripcion: 'CILINDRO METALICO BLANCO C/TAPA CON ASA', especificacion: 'CILINDRO DE 55GAL; COLOR CILINDRO: BLANCO; TITULO: RESIDUOS DE PLASTICO.', unidad: 'UN', cantidad: 1, precioUnitario: 52, fechaEntrega: '2021-12-10' },
+    { id: '1', codigo: '14003059', descripcion: 'CILINDRO METALICO MARRON C/TAPA CON ASA', especificacion: 'USO: RESIDUOS ORGANICOS. CILINDRO DE 55GAL; PLANCHA DE ACERO LAF 0.9MM; TIPO FRH TAPA REMOVIBLE CON ASA DE 3CM; COLOR: MARRON; SEGUN CODIGO DE COLORES ADJUNTO.', unidad: 'UN', cantidad: 4, precioUnitario: 52, fechaEntrega: '2025-06-05' },
+    { id: '2', codigo: '14003060', descripcion: 'CILINDRO METALICO AMARILLO C/TAPA CON ASA', especificacion: 'CILINDRO DE 55GAL; PLANCHA ACERO LAF 0.9MM; COLOR: AMARILLO; USO: RESIDUOS METALICOS.', unidad: 'UN', cantidad: 4, precioUnitario: 52, fechaEntrega: '2025-06-05' },
+    { id: '3', codigo: '14003062', descripcion: 'CILINDRO METALICO AZUL C/TAPA CON ASA', especificacion: 'CILINDRO DE 55GAL; COLOR: AZUL; USO: RESIDUOS PAPEL Y CARTON.', unidad: 'UN', cantidad: 2, precioUnitario: 52, fechaEntrega: '2025-06-05' },
+    { id: '4', codigo: '14003063', descripcion: 'CILINDRO METALICO BLANCO C/TAPA CON ASA', especificacion: 'CILINDRO DE 55GAL; COLOR: BLANCO; USO: RESIDUOS DE PLASTICO.', unidad: 'UN', cantidad: 2, precioUnitario: 52, fechaEntrega: '2025-06-05' },
   ],
-  autorizadoPor: 'BRUCE MUTCH',
-  fechaAutorizacion: '2021-12-02',
-  plazoEntrega: 10,
-  lugarEntrega: 'TRC CALLAO',
+  autorizadoPor: 'CARLOS VARGAS',
+  fechaAutorizacion: '2025-05-20',
+  plazoEntrega: 15,
+  lugarEntrega: 'ALMACEN UNIDAD CERRO AZUL',
   formaPago: 30
 }
 
