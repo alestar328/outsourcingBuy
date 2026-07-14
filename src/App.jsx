@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import Solped, { CATEGORIAS_SOLPED } from './Solped.jsx'
 import OrdenCompra from './OrdenCompra.jsx'
+import Seguimiento from './Seguimiento.jsx'
 import Login from './Login.jsx'
 import { listarDocumentos } from './solpedRepo.js'
 import {
@@ -25,7 +26,7 @@ import {
   Bell, Plus, Eye, X, Calendar, CheckCircle, Search,
   ClipboardList, Monitor, Smartphone, MoreHorizontal,
   ChevronRight, Download, Upload, Copy, AlertTriangle, LogOut, HelpCircle,
-  Building2,
+  Building2, Truck,
 } from 'lucide-react'
 
 // ─── PALETTE ──────────────────────────────────────────────────────────────────
@@ -308,6 +309,7 @@ const NAV = [
   { id: 'proveedores', label: 'Proveedores', icon: Users           },
   { id: 'materiales',  label: 'Materiales',  icon: Package         },
   { id: 'ordenes',     label: 'Órdenes',     icon: ShoppingCart    },
+  { id: 'seguimiento', label: 'Seguimiento', icon: Truck           },
   { id: 'acuerdos',    label: 'Acuerdos',    icon: FileText        },
 ]
 const NAV_PRIMARY   = NAV
@@ -2224,6 +2226,7 @@ const VIEWS = {
   proveedores: { comp: Proveedores, title: 'Maestro de Proveedores' },
   materiales:  { comp: Materiales,  title: 'Maestro de Materiales'  },
   ordenes:     { comp: OrdenCompra, title: 'Órdenes de Compra'      },
+  seguimiento: { comp: Seguimiento, title: 'Seguimiento de Órdenes' },
   acuerdos:    { comp: Acuerdos,    title: 'Acuerdos Marco'         },
 }
 
