@@ -1,26 +1,29 @@
 // ══════════════════════════════════════════════════════════════════════════════
-//  Seguimiento de Órdenes de Compra (expediting)
+//  Seguimiento de entregas (Excel de OCs del cliente) — reformateo 2026-08
 // ══════════════════════════════════════════════════════════════════════════════
-//  List Report: OCs en curso con semáforo, acuse de recibo del proveedor y
-//  nueva fecha de entrega editables en línea (pedidos del socio).
-//  Object Page: línea de vida de hitos, fechas frente al proveedor, avance por
-//  línea, recepciones parciales y bitácora. Informe Excel + correo por cliente.
-//  Solo el equipo de Minos registra datos (fase 1, sin accesos externos).
+//  El cliente envía un Excel con sus OCs ya emitidas (hoja "Detalle"). Minos
+//  contacta a cada proveedor para que confirme o rectifique la "Fecha de entrega
+//  actual" de sus materiales. List Report agrupada por proveedor con selección,
+//  fecha confirmada editable en línea y «Generar email» (texto + Excel adjunto;
+//  el envío es manual). Reimportar preserva confirmadas y marca cambios de fecha.
 // ══════════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import {
-  listarOrdenesSeguimiento, listarEventos, marcarOCRecibida, confirmarFechaEntrega,
-  actualizarNuevaFecha, cambiarHito, registrarNota, actualizarFechaEstimada,
-  registrarRecepcion, idxHito,
+  listarLineas, importarLineas, confirmarFechaEntrega,
+  listarEmailsProveedores, guardarEmailProveedor,
 } from './seguimientoRepo.js'
-import { exportarInformeCliente, textoCorreoInforme } from './seguimientoExcel.js'
 import {
-  semaforoOC, fmtDate, hoyISO, fechaComprometida, fechaObjetivo, esPendienteEntrega,
+  parsearSeguimientoExcel, exportarExcelProveedor,
+  asuntoCorreoProveedor, textoCorreoProveedor,
+} from './seguimientoExcel.js'
+import {
+  fmtDate, claveProveedor, diasVencidos, emailValido,
 } from './seguimientoLogic.js'
 import {
-  ChevronLeft, RefreshCw, CheckCircle2, AlertCircle, X, ArrowRight,
-  Mail, Copy, Search, Truck, ClipboardList, Calendar,
+  RefreshCw, CheckCircle2, AlertCircle, X, Mail, Copy, Search, Truck,
+  Upload, FileSpreadsheet, AtSign,
 } from 'lucide-react'
 
 const C = {
@@ -33,47 +36,10 @@ const C = {
 }
 const F = 'Inter, sans-serif'
 
+const fmtNum = n => (n === null || n === undefined || n === '') ? '' :
+  Number(n).toLocaleString('es-PE', { maximumFractionDigits: 2 })
+
 // ─── Piezas visuales ──────────────────────────────────────────────────────────
-
-const SEM_COLOR = { rojo: C.danger, ambar: C.warn, verde: C.success, gris: C.muted }
-
-function Semaforo({ sem, size = 10 }) {
-  return (
-    <span title={sem.motivo} style={{
-      display: 'inline-block', width: size, height: size, borderRadius: '50%',
-      background: SEM_COLOR[sem.nivel], boxShadow: `0 0 0 3px ${SEM_COLOR[sem.nivel]}22`, flexShrink: 0,
-    }} />
-  )
-}
-
-const HITO_COLOR = {
-  'Emitida':          { bg: '#E8F2FF', fg: C.brand },
-  'Confirmada':       { bg: '#E3F2E7', fg: '#106A32' },
-  'En fabricación':   { bg: '#FDF3E7', fg: '#8F5B00' },
-  'Despachada':       { bg: '#EDEAFB', fg: '#4A3FA5' },
-  'Recibida parcial': { bg: '#FDF3E7', fg: '#8F5B00' },
-  'Recibida total':   { bg: '#E3F2E7', fg: '#106A32' },
-  'Cerrada':          { bg: '#EFEFEF', fg: C.muted },
-}
-function HitoChip({ hito }) {
-  const c = HITO_COLOR[hito] || HITO_COLOR['Emitida']
-  return (
-    <span style={{ fontFamily: F, fontSize: 11, fontWeight: 600, color: c.fg, background: c.bg, padding: '2px 9px', borderRadius: 10, whiteSpace: 'nowrap' }}>
-      {hito}
-    </span>
-  )
-}
-
-function BarraAvance({ pct, width = 72 }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-      <span style={{ width, height: 6, borderRadius: 3, background: C.border, overflow: 'hidden', display: 'inline-block' }}>
-        <span style={{ display: 'block', width: `${Math.min(pct, 100)}%`, height: '100%', background: pct >= 100 ? C.success : C.primary }} />
-      </span>
-      <span style={{ fontFamily: F, fontSize: 11, color: C.muted, minWidth: 30 }}>{pct}%</span>
-    </span>
-  )
-}
 
 function Btn({ children, onClick, primary, danger, disabled, title }) {
   return (
@@ -89,16 +55,15 @@ function Btn({ children, onClick, primary, danger, disabled, title }) {
   )
 }
 
-function DateInp({ value, onChange, disabled, title }) {
+function DateInp({ value, onChange, title }) {
   return (
-    <input type="date" value={value || ''} disabled={disabled} title={title}
+    <input type="date" value={value || ''} title={title}
       onClick={e => e.stopPropagation()}
       onChange={e => onChange(e.target.value)}
       style={{
         fontFamily: F, fontSize: 11, color: value ? C.text : C.muted,
         border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '4px 6px',
-        background: disabled ? `${C.border}55` : C.card, outline: 'none', width: 118,
-        cursor: disabled ? 'not-allowed' : 'pointer',
+        background: C.card, outline: 'none', width: 118, cursor: 'pointer',
       }} />
   )
 }
@@ -148,11 +113,10 @@ function Modal({ title, subtitle, onClose, children, footer, isMobile, width = 5
 const Th = ({ children, right }) => (
   <th style={{ position: 'sticky', top: 0, background: C.card, zIndex: 1, textAlign: right ? 'right' : 'left', padding: '9px 10px', fontFamily: F, fontSize: 10, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap' }}>{children}</th>
 )
-const Td = ({ children, right, style }) => (
-  <td style={{ padding: '8px 10px', fontFamily: F, fontSize: 12, color: C.text, borderBottom: `1px solid ${C.border}`, textAlign: right ? 'right' : 'left', verticalAlign: 'middle', ...style }}>{children}</td>
+const Td = ({ children, right, style, onClick }) => (
+  <td onClick={onClick} style={{ padding: '8px 10px', fontFamily: F, fontSize: 12, color: C.text, borderBottom: `1px solid ${C.border}`, textAlign: right ? 'right' : 'left', verticalAlign: 'middle', ...style }}>{children}</td>
 )
 
-// Dato etiquetado de la cabecera de objeto / secciones.
 function Dato({ label, children }) {
   return (
     <div style={{ minWidth: 0 }}>
@@ -162,613 +126,397 @@ function Dato({ label, children }) {
   )
 }
 
-function EstadoVacio({ icon: Icon, titulo, ayuda }) {
+function EstadoVacio({ icon: Icon, titulo, ayuda, accion }) {
   return (
     <div style={{ border: `1px dashed ${C.borderInput}`, borderRadius: 12, padding: '48px 20px', textAlign: 'center', margin: 20 }}>
       <Icon size={34} style={{ color: C.borderInput }} />
       <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: C.text, marginTop: 10 }}>{titulo}</div>
       <div style={{ fontFamily: F, fontSize: 12, color: C.muted, marginTop: 4 }}>{ayuda}</div>
+      {accion && <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}>{accion}</div>}
     </div>
   )
 }
 
-// ─── Modal: registrar recepción ───────────────────────────────────────────────
+// Marca de cambio: el cliente movió la "Fecha de entrega actual" en un reimport.
+function FechaActualCell({ linea }) {
+  const cambio = linea.fechaAnterior && linea.fechaAnterior !== linea.fechaActual
+  return (
+    <span title={cambio ? `El cliente cambió la fecha: antes ${fmtDate(linea.fechaAnterior)}` : undefined}>
+      <span style={{ fontWeight: cambio ? 600 : 400, color: cambio ? '#8F5B00' : C.text, whiteSpace: 'nowrap' }}>
+        {fmtDate(linea.fechaActual) || '—'}
+      </span>
+      {cambio && (
+        <span style={{ display: 'block', fontSize: 10, color: C.gold, whiteSpace: 'nowrap' }}>
+          antes {fmtDate(linea.fechaAnterior)}
+        </span>
+      )}
+    </span>
+  )
+}
 
-function RecepcionModal({ oc, isMobile, onClose, onGuardar }) {
-  const [fecha, setFecha] = useState(hoyISO())
-  const [referencia, setReferencia] = useState('')
-  const [nota, setNota] = useState('')
-  // Por defecto se propone recibir todo lo pendiente (el caso común, ~70%).
-  const [cant, setCant] = useState(() => Object.fromEntries(
-    oc.items.map(it => [it.id, Math.max(it.cantidad - it.recibido, 0)])
-  ))
-  const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState(null)
+// ─── Modal: generar email al proveedor ────────────────────────────────────────
 
-  const setLinea = (id, v, max) => {
-    const n = Math.max(0, Math.min(Number(v) || 0, max))
-    setCant(c => ({ ...c, [id]: n }))
+function EmailModal({ grupo, lineas, emailInicial, isMobile, onClose, onAviso, onEmailGuardado }) {
+  const [email, setEmail] = useState(emailInicial || '')
+  const asunto = asuntoCorreoProveedor(lineas)
+  const texto = textoCorreoProveedor({ proveedorNombre: grupo.nombre, lineas })
+
+  // El email capturado se recuerda para la próxima vez (mini-directorio por código SAP).
+  const persistirEmail = () => {
+    if (!email.trim() || !emailValido(email.trim())) return
+    guardarEmailProveedor({ codigo: grupo.codigo, nombre: grupo.nombre, email: email.trim() })
+      .then(() => onEmailGuardado(grupo.codigo || grupo.nombre, email.trim()))
+      .catch(() => {})
   }
-  const lineas = oc.items
-    .map(it => ({ ocItemId: it.id, cantidad: cant[it.id] || 0 }))
-    .filter(l => l.cantidad > 0)
-  const esTotal = oc.items.every(it => it.recibido + (cant[it.id] || 0) >= it.cantidad)
 
-  const guardar = async () => {
-    setSaving(true); setErr(null)
+  const copiar = async () => {
+    persistirEmail()
     try {
-      await onGuardar({ fecha, referencia, nota, lineas, esTotal })
-    } catch (e) { setErr(e.message); setSaving(false) }
+      await navigator.clipboard.writeText(`Para: ${email.trim()}\nAsunto: ${asunto}\n\n${texto}`)
+      onAviso('Correo copiado al portapapeles — pégalo en tu cliente de correo.')
+    } catch { onAviso('No se pudo copiar automáticamente; selecciona y copia el texto.') }
   }
+  const descargar = () => {
+    persistirEmail()
+    exportarExcelProveedor({ proveedorNombre: grupo.nombre, lineas })
+    onAviso(`Excel de ${grupo.nombre} descargado (${lineas.length} material${lineas.length !== 1 ? 'es' : ''}) — adjúntalo al correo.`)
+  }
+
+  const emailInvalido = !!email.trim() && !emailValido(email.trim())
 
   return (
     <Modal isMobile={isMobile} width={640} onClose={onClose}
-      title={`Registrar recepción — OC ${oc.numeroOC}`}
-      subtitle="Entrega en almacén del cliente (avisada por correo o llamada)"
+      title="Generar email al proveedor"
+      subtitle={`${grupo.nombre}${grupo.codigo ? ` · ${grupo.codigo}` : ''} · ${lineas.length} material${lineas.length !== 1 ? 'es' : ''} · el envío es manual`}
       footer={<>
-        <Btn onClick={onClose}>Cancelar</Btn>
-        <Btn primary disabled={saving || !lineas.length} onClick={guardar}>
-          {saving ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 size={13} />}
-          {esTotal ? 'Registrar recepción total' : 'Registrar recepción parcial'}
-        </Btn>
+        <Btn onClick={copiar}><Copy size={13} />Copiar correo</Btn>
+        <Btn primary onClick={descargar}><FileSpreadsheet size={13} />Descargar Excel adjunto</Btn>
       </>}>
-      {err && <Banner tipo="error">{err}</Banner>}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '140px 1fr', gap: 12, marginBottom: 14 }}>
-        <Dato label="Fecha de recepción"><DateInp value={fecha} onChange={setFecha} /></Dato>
-        <Dato label="Referencia (guía de remisión / aviso)">
-          <input value={referencia} onChange={e => setReferencia(e.target.value)} placeholder="p.ej. GR 001-000123"
-            style={{ fontFamily: F, fontSize: 12, border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '6px 8px', width: '100%', boxSizing: 'border-box', outline: 'none' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Dato label="Email del proveedor">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AtSign size={14} style={{ color: C.muted, flexShrink: 0 }} />
+            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@proveedor.com"
+              style={{ fontFamily: F, fontSize: 12, border: `1px solid ${emailInvalido ? C.danger : C.borderInput}`, borderRadius: 6, padding: '6px 8px', flex: 1, outline: 'none' }} />
+          </div>
+          <div style={{ fontSize: 11, color: emailInvalido ? C.danger : C.muted, marginTop: 4 }}>
+            {emailInvalido ? 'Formato de email inválido.' : 'Se guarda al copiar o descargar, para reutilizarlo la próxima vez.'}
+          </div>
         </Dato>
-      </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><Th>Línea</Th><Th right>Pedido</Th><Th right>Recibido</Th><Th right>Pendiente</Th><Th right>Recibir ahora</Th></tr></thead>
-        <tbody>
-          {oc.items.map(it => {
-            const pend = Math.max(it.cantidad - it.recibido, 0)
-            return (
-              <tr key={it.id} style={{ opacity: pend === 0 ? 0.5 : 1 }}>
-                <Td><span style={{ fontWeight: 600 }}>{it.codigo || '—'}</span> · {it.descripcion}</Td>
-                <Td right>{it.cantidad} {it.unidad}</Td>
-                <Td right>{it.recibido}</Td>
-                <Td right>{pend}</Td>
-                <Td right>
-                  <input type="number" min={0} max={pend} value={cant[it.id] ?? 0} disabled={pend === 0}
-                    onChange={e => setLinea(it.id, e.target.value, pend)}
-                    style={{ fontFamily: F, fontSize: 12, width: 76, textAlign: 'right', border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '4px 6px', outline: 'none' }} />
-                </Td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-      <div style={{ marginTop: 12 }}>
-        <Dato label="Nota (opcional)">
-          <textarea value={nota} onChange={e => setNota(e.target.value)} rows={2}
-            style={{ fontFamily: F, fontSize: 12, border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '6px 8px', width: '100%', boxSizing: 'border-box', outline: 'none', resize: 'vertical' }} />
+        <Dato label="Asunto">
+          <div style={{ fontFamily: F, fontSize: 12, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 8px' }}>{asunto}</div>
+        </Dato>
+        <Dato label="Texto del correo (copiar y pegar)">
+          <textarea readOnly value={texto} rows={isMobile ? 12 : 14}
+            style={{ fontFamily: 'ui-monospace, Consolas, monospace', fontSize: 11.5, border: `1px solid ${C.borderInput}`, borderRadius: 8, padding: 10, width: '100%', boxSizing: 'border-box', outline: 'none', resize: 'vertical', background: C.bg, color: C.text }} />
         </Dato>
       </div>
     </Modal>
   )
 }
 
-// ─── Modal genérico: fecha + nota (avance de hito, cierre, nota libre) ────────
-
-function AccionModal({ titulo, subtitulo, confirmLabel, danger, conFecha = true, isMobile, onClose, onConfirmar }) {
-  const [fecha, setFecha] = useState(hoyISO())
-  const [nota, setNota] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState(null)
-  const ok = async () => {
-    setSaving(true); setErr(null)
-    try { await onConfirmar({ fecha, nota }) } catch (e) { setErr(e.message); setSaving(false) }
-  }
-  return (
-    <Modal isMobile={isMobile} width={440} onClose={onClose} title={titulo} subtitle={subtitulo}
-      footer={<>
-        <Btn onClick={onClose}>Cancelar</Btn>
-        <Btn primary={!danger} danger={danger} disabled={saving} onClick={ok}>
-          {saving && <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} />}{confirmLabel}
-        </Btn>
-      </>}>
-      {err && <Banner tipo="error">{err}</Banner>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {conFecha && <Dato label="Fecha"><DateInp value={fecha} onChange={setFecha} /></Dato>}
-        <Dato label="Nota (opcional)">
-          <textarea value={nota} onChange={e => setNota(e.target.value)} rows={3} autoFocus={!conFecha}
-            style={{ fontFamily: F, fontSize: 12, border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '6px 8px', width: '100%', boxSizing: 'border-box', outline: 'none', resize: 'vertical' }} />
-        </Dato>
-      </div>
-    </Modal>
-  )
-}
-
-// ─── Modal: informe al cliente (Excel + texto de correo) ──────────────────────
-
-function InformeModal({ ocs, clientes, clienteInicial, isMobile, onClose, onAviso }) {
-  const [cliente, setCliente] = useState(clienteInicial || clientes[0] || '')
-  const pendientes = ocs.filter(o => o.cliente === cliente && esPendienteEntrega(o))
-  const texto = cliente ? textoCorreoInforme({ clienteNombre: cliente, ocs }) : ''
-
-  const copiar = async () => {
-    try { await navigator.clipboard.writeText(texto); onAviso('Texto del correo copiado al portapapeles.') }
-    catch { onAviso('No se pudo copiar automáticamente; selecciona y copia el texto.') }
-  }
-  const descargar = () => {
-    exportarInformeCliente({ clienteNombre: cliente, ocs })
-    onAviso(`Informe Excel de ${cliente} descargado (${pendientes.length} OC${pendientes.length !== 1 ? 's' : ''} pendiente${pendientes.length !== 1 ? 's' : ''}).`)
-  }
-
-  return (
-    <Modal isMobile={isMobile} width={620} onClose={onClose}
-      title="Informe de estado para el cliente"
-      subtitle="Todas las OCs pendientes de entrega · el envío del correo es manual (fase 1)"
-      footer={<>
-        <Btn onClick={copiar} disabled={!cliente}><Copy size={13} />Copiar correo</Btn>
-        <Btn primary onClick={descargar} disabled={!cliente}><Mail size={13} />Descargar Excel</Btn>
-      </>}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-        <Dato label="Cliente">
-          <select value={cliente} onChange={e => setCliente(e.target.value)}
-            style={{ fontFamily: F, fontSize: 12, border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '6px 8px', outline: 'none', minWidth: 220 }}>
-            {clientes.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </Dato>
-        <span style={{ fontFamily: F, fontSize: 12, color: C.muted, paddingBottom: 7 }}>
-          {pendientes.length} OC{pendientes.length !== 1 ? 's' : ''} pendiente{pendientes.length !== 1 ? 's' : ''} de entrega
-        </span>
-      </div>
-      <Dato label="Texto del correo (copiar y pegar)">
-        <textarea readOnly value={texto} rows={isMobile ? 12 : 14}
-          style={{ fontFamily: 'ui-monospace, Consolas, monospace', fontSize: 11.5, border: `1px solid ${C.borderInput}`, borderRadius: 8, padding: 10, width: '100%', boxSizing: 'border-box', outline: 'none', resize: 'vertical', background: C.bg, color: C.text }} />
-      </Dato>
-    </Modal>
-  )
-}
-
-// ─── Object Page: detalle de una OC ───────────────────────────────────────────
-
-// Pasos visibles de la línea de vida (parcial/total colapsan en "Recibida").
-const PASOS = ['Emitida', 'Confirmada', 'En fabricación', 'Despachada', 'Recibida', 'Cerrada']
-const pasoDeHito = h => h === 'Recibida parcial' || h === 'Recibida total' ? 4 : h === 'Cerrada' ? 5 : idxHito(h)
-
-function Stepper({ oc, eventos, isMobile }) {
-  const actual = pasoDeHito(oc.hito)
-  // Fecha del primer evento registrado para cada paso.
-  const fechaDe = paso => {
-    const hitosDelPaso = paso === 4 ? ['Recibida parcial', 'Recibida total'] : [PASOS[paso] === 'Emitida' ? null : PASOS[paso]]
-    if (paso === 0) return oc.fechaEmision
-    const ev = [...eventos].reverse().find(e => hitosDelPaso.includes(e.hito))
-    return ev?.fecha || ''
-  }
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', padding: '14px 4px 6px' }}>
-      {PASOS.map((paso, i) => {
-        const done = i <= actual
-        const esParcialAqui = i === 4 && oc.hito === 'Recibida parcial'
-        const color = done ? (esParcialAqui ? C.warn : C.success) : C.borderInput
-        return (
-          <div key={paso} style={{ display: 'flex', alignItems: 'flex-start', flex: i < PASOS.length - 1 ? 1 : 'none', minWidth: isMobile ? 74 : 96 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: isMobile ? 74 : 96, flexShrink: 0 }}>
-              <div style={{ width: 22, height: 22, borderRadius: '50%', background: done ? color : C.card, border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                {done && <CheckCircle2 size={13} />}
-              </div>
-              <div style={{ fontFamily: F, fontSize: 10.5, fontWeight: i === actual ? 700 : 500, color: done ? C.text : C.muted, marginTop: 5, textAlign: 'center' }}>
-                {paso}{esParcialAqui ? ` (${oc.avancePct}%)` : ''}
-              </div>
-              <div style={{ fontFamily: F, fontSize: 10, color: C.muted, marginTop: 1 }}>{fmtDate(fechaDe(i))}</div>
-            </div>
-            {i < PASOS.length - 1 && (
-              <div style={{ flex: 1, height: 2, background: i < actual ? C.success : C.border, marginTop: 10, minWidth: 12 }} />
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function DetalleOC({ oc, isMobile, onBack, conAccion }) {
-  const [eventos, setEventos] = useState([])
-  const [modal, setModal] = useState(null)   // 'recepcion' | 'hito' | 'cerrar' | 'nota'
-
-  const cargarEventos = () => listarEventos(oc.id).then(setEventos).catch(() => {})
-  useEffect(() => { cargarEventos() }, [oc.id, oc.hito, oc.totalRecibido])
-
-  // Para acciones inline (inputs de fecha): el error ya se muestra en banner.
-  const inline = (fn, msg) => conAccion(fn, msg).catch(() => {})
-
-  const sem = semaforoOC(oc)
-  const cerrada = oc.hito === 'Cerrada'
-  // Siguiente hito "manual" de la cadena (los de recepción salen de las recepciones).
-  const siguiente = ['Confirmada', 'En fabricación', 'Despachada'][idxHito(oc.hito)] || null
-  const completa = oc.totalCantidad > 0 && oc.totalRecibido >= oc.totalCantidad
-
-  const accion = (fn, msg) => conAccion(fn, msg).then(() => { setModal(null); cargarEventos() })
-
-  const seccion = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: isMobile ? 12 : 16 }
-  const h2 = { fontFamily: F, fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }
-
-  return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '10px 14px' : '10px 24px' }}>
-      {/* Cabecera de objeto */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-        <button onClick={onBack} title="Volver a la lista" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: C.card, border: `1px solid ${C.border}`, cursor: 'pointer', color: C.brand, flexShrink: 0 }}>
-          <ChevronLeft size={17} />
-        </button>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: F, fontSize: 17, fontWeight: 700, color: C.text }}>OC {oc.numeroOC}</span>
-            <Semaforo sem={sem} size={11} />
-            <HitoChip hito={oc.hito} />
-            {oc.origen === 'cliente' && (
-              <span style={{ fontFamily: F, fontSize: 10.5, fontWeight: 600, color: C.gold, background: `${C.gold}18`, border: `1px solid ${C.gold}40`, padding: '1px 8px', borderRadius: 4 }}>OC del cliente</span>
-            )}
-          </div>
-          <div style={{ fontFamily: F, fontSize: 12, color: C.muted, marginTop: 2 }}>
-            {oc.cliente || 'Sin cliente'} · {oc.proveedor || 'Sin proveedor'} · emitida {fmtDate(oc.fechaEmision)}
-          </div>
-          <div style={{ fontFamily: F, fontSize: 11.5, color: sem.nivel === 'rojo' ? C.danger : sem.nivel === 'ambar' ? '#8F5B00' : C.muted, marginTop: 2 }}>
-            {sem.motivo}
-          </div>
-        </div>
-        {/* Toolbar de acciones del objeto: una sola primaria a la derecha */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Btn onClick={() => setModal('nota')} title="Anotar gestión (llamada, correo…)"><ClipboardList size={13} />{isMobile ? '' : 'Nota'}</Btn>
-          {siguiente && !cerrada && (
-            <Btn onClick={() => setModal('hito')} title={`Marcar hito «${siguiente}»`}><Truck size={13} />{isMobile ? siguiente : `Marcar ${siguiente.toLowerCase()}`}</Btn>
-          )}
-          {!cerrada && (
-            <Btn danger disabled={!completa} onClick={() => setModal('cerrar')}
-              title={completa ? 'Cerrar la OC' : 'Solo se cierra con el 100% entregado en almacén del cliente'}>
-              Cerrar OC
-            </Btn>
-          )}
-          {!cerrada && (
-            <Btn primary onClick={() => setModal('recepcion')} disabled={completa}
-              title={completa ? 'Ya está todo recibido' : 'Registrar entrega en almacén del cliente'}>
-              <CheckCircle2 size={13} />Registrar recepción
-            </Btn>
-          )}
-        </div>
-      </div>
-
-      {/* Línea de vida */}
-      <div style={{ ...seccion, marginBottom: 12 }}>
-        <Stepper oc={oc} eventos={eventos} isMobile={isMobile} />
-      </div>
-
-      {/* Frente proveedor: acuse + fechas */}
-      <div style={{ ...seccion, marginBottom: 12 }}>
-        <div style={h2}>Frente proveedor</div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(6, auto)', gap: isMobile ? 12 : 22, justifyContent: 'start', alignItems: 'start' }}>
-          <Dato label="Proveedor recibió la OC">
-            {oc.ocRecibidaProveedor ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: C.success, fontWeight: 600 }}>
-                <CheckCircle2 size={14} />{fmtDate(oc.fechaRecepcionOC) || 'Sí'}
-              </span>
-            ) : cerrada ? '—' : (
-              <DateInp value="" title="Fecha del acuse de recibo"
-                onChange={v => v && inline(() => marcarOCRecibida(oc.id, v), 'Acuse de recibo registrado.')} />
-            )}
-          </Dato>
-          <Dato label="F. entrega confirmada">
-            <DateInp value={oc.fechaEntregaConfirmada} disabled={cerrada} title="Fecha que confirmó el proveedor"
-              onChange={v => v && inline(() => confirmarFechaEntrega(oc.id, v, oc.hito), 'Fecha de entrega confirmada.')} />
-          </Dato>
-          <Dato label="Nueva fecha de entrega">
-            <DateInp value={oc.nuevaFechaEntrega} disabled={cerrada} title="Re-programación de la entrega"
-              onChange={v => inline(() => actualizarNuevaFecha(oc.id, v), 'Nueva fecha de entrega guardada.')} />
-          </Dato>
-          <Dato label="F. comprometida">{fmtDate(fechaComprometida(oc)) || '—'}</Dato>
-          <Dato label="Lugar de entrega">{oc.lugarEntrega || '—'}</Dato>
-          <Dato label="Avance"><BarraAvance pct={oc.avancePct} /></Dato>
-        </div>
-      </div>
-
-      {/* Líneas de la OC */}
-      <div style={{ ...seccion, marginBottom: 12, padding: 0, overflow: 'hidden' }}>
-        <div style={{ ...h2, padding: isMobile ? '12px 12px 0' : '14px 16px 0', marginBottom: 6 }}>
-          Avance por línea <span style={{ color: C.muted, fontWeight: 400 }}>· {oc.items.length} línea{oc.items.length !== 1 ? 's' : ''}</span>
-        </div>
-        {isMobile ? (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {oc.items.map(it => {
-              const pend = Math.max(it.cantidad - it.recibido, 0)
-              return (
-                <div key={it.id} style={{ padding: '10px 12px', borderTop: `1px solid ${C.border}` }}>
-                  <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: C.text }}>{it.codigo ? `${it.codigo} · ` : ''}{it.descripcion}</div>
-                  <div style={{ fontFamily: F, fontSize: 11, color: C.muted, marginTop: 3 }}>
-                    Pedido {it.cantidad} {it.unidad} · Recibido {it.recibido} · Pendiente {pend}
-                  </div>
-                  <div style={{ marginTop: 5 }}><BarraAvance pct={it.cantidad ? Math.round((it.recibido / it.cantidad) * 100) : 0} width={110} /></div>
-                  <div style={{ fontFamily: F, fontSize: 11, color: C.muted, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    Comprometida {fmtDate(it.fechaEntrega) || '—'} · Estimada{' '}
-                    <DateInp value={it.fechaEstimada} disabled={cerrada}
-                      onChange={v => inline(() => actualizarFechaEstimada(it.id, v), 'Fecha estimada guardada.')} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr>
-                <Th>Pos.</Th><Th>Código</Th><Th>Descripción</Th><Th right>Pedido</Th><Th right>Recibido</Th><Th right>Pendiente</Th>
-                <Th>Avance</Th><Th>F. comprometida</Th><Th>F. estimada</Th>
-              </tr></thead>
-              <tbody>
-                {oc.items.map(it => {
-                  const pend = Math.max(it.cantidad - it.recibido, 0)
-                  return (
-                    <tr key={it.id}>
-                      <Td>{it.posicion ?? ''}</Td>
-                      <Td style={{ color: C.primary, fontWeight: 600 }}>{it.codigo || '—'}</Td>
-                      <Td>{it.descripcion}</Td>
-                      <Td right>{it.cantidad} {it.unidad}</Td>
-                      <Td right>{it.recibido}</Td>
-                      <Td right style={{ fontWeight: pend > 0 ? 600 : 400, color: pend > 0 ? C.text : C.success }}>{pend > 0 ? pend : '✓'}</Td>
-                      <Td><BarraAvance pct={it.cantidad ? Math.round((it.recibido / it.cantidad) * 100) : 0} /></Td>
-                      <Td>{fmtDate(it.fechaEntrega) || '—'}</Td>
-                      <Td>
-                        <DateInp value={it.fechaEstimada} disabled={cerrada}
-                          onChange={v => inline(() => actualizarFechaEstimada(it.id, v), 'Fecha estimada guardada.')} />
-                      </Td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Recepciones + bitácora */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div style={seccion}>
-          <div style={h2}>Recepciones registradas</div>
-          {oc.recepciones.length === 0 ? (
-            <div style={{ fontFamily: F, fontSize: 12, color: C.muted }}>Aún no hay entregas registradas.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[...oc.recepciones].reverse().map(r => (
-                <div key={r.id} style={{ border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 10px' }}>
-                  <div style={{ fontFamily: F, fontSize: 12, fontWeight: 600, color: C.text, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <Calendar size={13} style={{ color: C.muted }} />{fmtDate(r.fecha)}
-                    {r.referencia && <span style={{ color: C.muted, fontWeight: 400 }}>· {r.referencia}</span>}
-                  </div>
-                  <div style={{ fontFamily: F, fontSize: 11.5, color: C.muted, marginTop: 3 }}>
-                    {r.lineas.map(l => {
-                      const it = oc.items.find(i => i.id === l.ocItemId)
-                      return `${l.cantidad} × ${it?.codigo || it?.descripcion || 'línea'}`
-                    }).join(' · ')}
-                  </div>
-                  {r.nota && <div style={{ fontFamily: F, fontSize: 11.5, color: C.text, marginTop: 3 }}>{r.nota}</div>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={seccion}>
-          <div style={h2}>Bitácora de seguimiento</div>
-          {eventos.length === 0 ? (
-            <div style={{ fontFamily: F, fontSize: 12, color: C.muted }}>Sin eventos registrados todavía.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7, maxHeight: 260, overflowY: 'auto' }}>
-              {eventos.map(e => (
-                <div key={e.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <span style={{ fontFamily: F, fontSize: 11, color: C.muted, minWidth: 70, paddingTop: 1 }}>{fmtDate(e.fecha)}</span>
-                  <div style={{ flex: 1 }}>
-                    {e.hito && <span style={{ marginRight: 6 }}><HitoChip hito={e.hito} /></span>}
-                    <span style={{ fontFamily: F, fontSize: 12, color: C.text }}>{e.nota}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Modales */}
-      {modal === 'recepcion' && (
-        <RecepcionModal oc={oc} isMobile={isMobile} onClose={() => setModal(null)}
-          onGuardar={datos => accion(() => registrarRecepcion(oc.id, datos),
-            datos.esTotal ? 'Recepción total registrada — la OC quedó lista para cerrar.' : 'Recepción parcial registrada.')} />
-      )}
-      {modal === 'hito' && siguiente && (
-        <AccionModal isMobile={isMobile} titulo={`Marcar «${siguiente}»`}
-          subtitulo={`OC ${oc.numeroOC} · ${oc.proveedor}`} confirmLabel={`Marcar ${siguiente.toLowerCase()}`}
-          onClose={() => setModal(null)}
-          onConfirmar={({ fecha, nota }) => accion(() => cambiarHito(oc.id, siguiente, { fecha, nota: nota || null }), `Hito «${siguiente}» registrado.`)} />
-      )}
-      {modal === 'cerrar' && (
-        <AccionModal isMobile={isMobile} danger titulo="Cerrar Orden de Compra"
-          subtitulo={`OC ${oc.numeroOC} · entregada al 100% en almacén del cliente. El pago no forma parte del seguimiento.`}
-          confirmLabel="Cerrar OC" onClose={() => setModal(null)}
-          onConfirmar={({ fecha, nota }) => accion(() => cambiarHito(oc.id, 'Cerrada', { fecha, nota: nota || null }), `OC ${oc.numeroOC} cerrada.`)} />
-      )}
-      {modal === 'nota' && (
-        <AccionModal isMobile={isMobile} titulo="Anotar gestión" conFecha={false}
-          subtitulo={`OC ${oc.numeroOC} · llamada, correo al proveedor, incidencia…`}
-          confirmLabel="Guardar nota" onClose={() => setModal(null)}
-          onConfirmar={({ nota }) => {
-            if (!nota.trim()) return Promise.reject(new Error('Escribe la nota.'))
-            return accion(() => registrarNota(oc.id, nota.trim()), 'Nota registrada.')
-          }} />
-      )}
-    </div>
-  )
-}
-
-// ─── List Report + raíz del módulo ────────────────────────────────────────────
+// ─── Raíz del módulo: List Report agrupada por proveedor ──────────────────────
 
 export default function Seguimiento({ isMobile }) {
-  const [ocs, setOcs] = useState([])
+  const [lineas, setLineas] = useState([])
+  const [emails, setEmails] = useState(new Map())
   const [loading, setLoading] = useState(true)
+  const [importando, setImportando] = useState(false)
   const [error, setError] = useState(null)
   const [aviso, setAviso] = useState(null)
   const [busca, setBusca] = useState('')
-  const [filtroCliente, setFiltroCliente] = useState('')
-  const [verCerradas, setVerCerradas] = useState(false)
-  const [detalleId, setDetalleId] = useState(null)
-  const [modalInforme, setModalInforme] = useState(false)
+  const [filtroProveedor, setFiltroProveedor] = useState('')
+  const [soloVencidas, setSoloVencidas] = useState(false)
+  const [seleccion, setSeleccion] = useState(new Set())
+  const [modalEmail, setModalEmail] = useState(null)   // { grupo, lineas }
+  const fileRef = useRef(null)
 
-  const flashAviso = msg => { setAviso(msg); setTimeout(() => setAviso(a => a === msg ? null : a), 4000) }
-  const refrescar = () => listarOrdenesSeguimiento().then(setOcs).catch(e => setError(e.message)).finally(() => setLoading(false))
+  const flashAviso = msg => { setAviso(msg); setTimeout(() => setAviso(a => a === msg ? null : a), 5000) }
+  const refrescar = () => Promise.all([listarLineas(), listarEmailsProveedores()])
+    .then(([ls, em]) => { setLineas(ls); setEmails(em) })
+    .catch(e => setError(e.message))
+    .finally(() => setLoading(false))
   useEffect(() => { refrescar() }, [])
 
-  // Ejecuta una acción de seguimiento y refresca la lista, con feedback.
-  const conAccion = async (fn, msgOk) => {
-    setError(null)
-    try { await fn(); await refrescar(); if (msgOk) flashAviso(msgOk) }
-    catch (e) { setError(e.message); throw e }
+  // ── Importación del Excel del cliente ──
+  const processFile = file => {
+    setImportando(true); setError(null)
+    const reader = new FileReader()
+    reader.onload = async e => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' })
+        const { hoja, lineas: parseadas } = parsearSeguimientoExcel(wb)
+        const st = await importarLineas(parseadas)
+        await refrescar()
+        setSeleccion(new Set())
+        flashAviso(`Importada hoja «${hoja}»: ${st.total} líneas (${st.nuevas} nuevas, ${st.actualizadas} actualizadas` +
+          (st.cambiosFecha ? `, ${st.cambiosFecha} con cambio de fecha de entrega` : '') +
+          (st.desactivadas ? `, ${st.desactivadas} ya no vienen` : '') + '). Las fechas confirmadas se conservaron.')
+      } catch (err) {
+        setError(err.message ?? 'Error desconocido al importar.')
+      } finally { setImportando(false) }
+    }
+    reader.onerror = () => { setError('No se pudo leer el archivo.'); setImportando(false) }
+    reader.readAsArrayBuffer(file)
   }
-  // Variante para llamadas inline en la tabla (el banner ya muestra el error).
-  const inline = (fn, msg) => conAccion(fn, msg).catch(() => {})
 
-  const clientes = useMemo(() => [...new Set(ocs.map(o => o.cliente).filter(Boolean))].sort(), [ocs])
-  const lista = useMemo(() => ocs.filter(o => {
-    if (!verCerradas && o.hito === 'Cerrada') return false
-    if (filtroCliente && o.cliente !== filtroCliente) return false
+  // ── Filtros y agrupación por proveedor ──
+  const proveedores = useMemo(() =>
+    [...new Map(lineas.map(l => [claveProveedor(l), l.proveedorNombre || claveProveedor(l)])).entries()]
+      .sort((a, b) => a[1].localeCompare(b[1])), [lineas])
+
+  const filtradas = useMemo(() => lineas.filter(l => {
+    if (filtroProveedor && claveProveedor(l) !== filtroProveedor) return false
+    if (soloVencidas && diasVencidos(l) === 0) return false
     if (busca.trim()) {
       const q = busca.trim().toLowerCase()
-      if (![o.numeroOC, o.proveedor, o.cliente].some(v => (v || '').toLowerCase().includes(q))) return false
+      if (![l.documentoCompras, l.material, l.textoBreve, l.proveedorNombre].some(v => (v || '').toLowerCase().includes(q))) return false
     }
     return true
-  }), [ocs, verCerradas, filtroCliente, busca])
+  }), [lineas, filtroProveedor, soloVencidas, busca])
 
-  const detalle = detalleId ? ocs.find(o => o.id === detalleId) : null
+  const grupos = useMemo(() => {
+    const map = new Map()
+    for (const l of filtradas) {
+      const clave = claveProveedor(l)
+      if (!map.has(clave)) map.set(clave, { clave, codigo: l.proveedorCodigo, nombre: l.proveedorNombre || clave, lineas: [] })
+      map.get(clave).lineas.push(l)
+    }
+    return [...map.values()].sort((a, b) => a.nombre.localeCompare(b.nombre))
+  }, [filtradas])
+
+  // ── Selección ──
+  const toggle = id => setSeleccion(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const toggleGrupo = g => setSeleccion(s => {
+    const n = new Set(s)
+    const todos = g.lineas.every(l => n.has(l.id))
+    for (const l of g.lineas) todos ? n.delete(l.id) : n.add(l.id)
+    return n
+  })
+
+  // Proveedor único de la selección actual (o null si está vacía / mezcla varios).
+  const grupoSeleccion = useMemo(() => {
+    if (!seleccion.size) return null
+    const sel = lineas.filter(l => seleccion.has(l.id))
+    const claves = new Set(sel.map(claveProveedor))
+    if (claves.size !== 1) return null
+    const l = sel[0]
+    return { grupo: { clave: claveProveedor(l), codigo: l.proveedorCodigo, nombre: l.proveedorNombre || claveProveedor(l) }, lineas: sel }
+  }, [seleccion, lineas])
+
+  const abrirEmailSeleccion = () => { if (grupoSeleccion) setModalEmail(grupoSeleccion) }
+  // Desde la cabecera de un grupo: sus líneas seleccionadas, o todas si no hay ninguna.
+  const abrirEmailGrupo = g => {
+    const sel = g.lineas.filter(l => seleccion.has(l.id))
+    setModalEmail({ grupo: g, lineas: sel.length ? sel : g.lineas })
+  }
+
+  const confirmarFecha = (linea, fecha) => {
+    setError(null)
+    confirmarFechaEntrega(linea.id, fecha)
+      .then(() => {
+        setLineas(ls => ls.map(l => l.id === linea.id ? { ...l, fechaConfirmada: fecha } : l))
+        flashAviso(fecha
+          ? `Fecha confirmada por ${linea.proveedorNombre} para la OC ${linea.documentoCompras} pos. ${linea.posicion}: ${fmtDate(fecha)}.`
+          : `Se quitó la fecha confirmada de la OC ${linea.documentoCompras} pos. ${linea.posicion}.`)
+      })
+      .catch(e => setError(e.message))
+  }
+
+  const tituloEmail = !seleccion.size ? 'Selecciona materiales para generar el email'
+    : !grupoSeleccion ? 'La selección mezcla varios proveedores: el email se genera por proveedor'
+    : `Generar email a ${grupoSeleccion.grupo.nombre} (${grupoSeleccion.lineas.length})`
+
+  const checkbox = (checked, onChange, title) => (
+    <input type="checkbox" checked={checked} onChange={onChange} title={title}
+      onClick={e => e.stopPropagation()} style={{ cursor: 'pointer' }} />
+  )
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {error && <Banner tipo="error" onClose={() => setError(null)}>{error}</Banner>}
       {aviso && <Banner tipo="ok" onClose={() => setAviso(null)}>{aviso}</Banner>}
 
-      {detalle ? (
-        <DetalleOC oc={detalle} isMobile={isMobile} onBack={() => setDetalleId(null)} conAccion={conAccion} />
-      ) : (
-        <>
-          {/* Toolbar de la List Report */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: isMobile ? '10px 14px' : '10px 24px', background: C.card, borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: C.text, marginRight: 'auto' }}>
-              OCs en seguimiento <span style={{ color: C.muted, fontWeight: 400 }}>{lista.length}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 9px' }}>
-              <Search size={13} style={{ color: C.muted }} />
-              <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="N° OC / proveedor…"
-                style={{ fontFamily: F, fontSize: 12, border: 'none', outline: 'none', background: 'transparent', width: isMobile ? 110 : 160, color: C.text }} />
-            </div>
-            {!isMobile && (
-              <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)}
-                style={{ fontFamily: F, fontSize: 12, border: `1px solid ${C.borderInput}`, borderRadius: 8, padding: '6px 8px', outline: 'none', color: C.text, background: C.card }}>
-                <option value="">Todos los clientes</option>
-                {clientes.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            )}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: F, fontSize: 12, color: C.muted, cursor: 'pointer', userSelect: 'none' }}>
-              <input type="checkbox" checked={verCerradas} onChange={e => setVerCerradas(e.target.checked)} />
-              {isMobile ? 'Cerradas' : 'Ver cerradas'}
-            </label>
-            <Btn primary onClick={() => setModalInforme(true)} disabled={!clientes.length}>
-              <Mail size={13} />{isMobile ? 'Informe' : 'Informe cliente'}
-            </Btn>
-          </div>
+      {/* Toolbar de la List Report */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: isMobile ? '10px 14px' : '10px 24px', background: C.card, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: C.text, marginRight: 'auto' }}>
+          Seguimiento de entregas <span style={{ color: C.muted, fontWeight: 400 }}>{filtradas.length}</span>
+          {seleccion.size > 0 && <span style={{ color: C.primary, fontWeight: 600, fontSize: 12, marginLeft: 8 }}>{seleccion.size} seleccionada{seleccion.size !== 1 ? 's' : ''}</span>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 9px' }}>
+          <Search size={13} style={{ color: C.muted }} />
+          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="OC / material / proveedor…"
+            style={{ fontFamily: F, fontSize: 12, border: 'none', outline: 'none', background: 'transparent', width: isMobile ? 110 : 170, color: C.text }} />
+        </div>
+        {!isMobile && (
+          <select value={filtroProveedor} onChange={e => setFiltroProveedor(e.target.value)}
+            style={{ fontFamily: F, fontSize: 12, border: `1px solid ${C.borderInput}`, borderRadius: 8, padding: '6px 8px', outline: 'none', color: C.text, background: C.card, maxWidth: 220 }}>
+            <option value="">Todos los proveedores</option>
+            {proveedores.map(([clave, nombre]) => <option key={clave} value={clave}>{nombre}</option>)}
+          </select>
+        )}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: F, fontSize: 12, color: C.muted, cursor: 'pointer', userSelect: 'none' }}>
+          <input type="checkbox" checked={soloVencidas} onChange={e => setSoloVencidas(e.target.checked)} />
+          {isMobile ? 'Vencidas' : 'Solo vencidas'}
+        </label>
+        <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f); e.target.value = '' }} />
+        <Btn onClick={() => fileRef.current?.click()} disabled={importando} title="Cargar el Excel de seguimiento que envía el cliente">
+          {importando ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={13} />}
+          {isMobile ? '' : 'Subir Excel'}
+        </Btn>
+        <Btn primary onClick={abrirEmailSeleccion} disabled={!grupoSeleccion} title={tituloEmail}>
+          <Mail size={13} />{isMobile ? 'Email' : 'Generar email'}
+        </Btn>
+      </div>
 
-          {/* Contenido */}
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {loading ? (
-              <div style={{ fontFamily: F, fontSize: 12, color: C.muted, padding: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />Cargando OCs…
-              </div>
-            ) : lista.length === 0 ? (
-              <EstadoVacio icon={Truck} titulo="No hay OCs en seguimiento"
-                ayuda={ocs.length ? 'Ajusta los filtros para ver más órdenes.' : 'Cuando emitas una Orden de Compra desde «Órdenes», aparecerá aquí para su seguimiento.'} />
-            ) : isMobile ? (
-              // Vista móvil: cards con labels (sin scroll horizontal)
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px' }}>
-                {lista.map(oc => {
-                  const sem = semaforoOC(oc)
-                  const objetivo = fechaObjetivo(oc)
-                  return (
-                    <div key={oc.id} onClick={() => setDetalleId(oc.id)}
-                      style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, cursor: 'pointer' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Semaforo sem={sem} />
-                        <span style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: C.primary }}>{oc.numeroOC}</span>
-                        <HitoChip hito={oc.hito} />
-                        <ArrowRight size={14} style={{ color: C.muted, marginLeft: 'auto' }} />
-                      </div>
-                      <div style={{ fontFamily: F, fontSize: 11.5, color: C.muted, marginTop: 6 }}>
-                        {oc.cliente} · {oc.proveedor || 'Sin proveedor'}
-                      </div>
-                      <div style={{ fontFamily: F, fontSize: 11.5, color: C.text, marginTop: 4, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                        <span>Emisión: {fmtDate(oc.fechaEmision)}</span>
-                        <span>Entrega: {fmtDate(objetivo) || 'por confirmar'}</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          OC recibida: {oc.ocRecibidaProveedor ? <CheckCircle2 size={13} style={{ color: C.success }} /> : 'No'}
+      {/* Contenido (acepta arrastrar y soltar el Excel) */}
+      <div
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) processFile(f) }}
+        style={{ flex: 1, overflowY: 'auto' }}>
+        {loading ? (
+          <div style={{ fontFamily: F, fontSize: 12, color: C.muted, padding: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />Cargando seguimiento…
+          </div>
+        ) : filtradas.length === 0 ? (
+          <EstadoVacio icon={lineas.length ? Truck : FileSpreadsheet}
+            titulo={lineas.length ? 'Sin resultados con estos filtros' : 'Sube el Excel de seguimiento del cliente'}
+            ayuda={lineas.length ? 'Ajusta la búsqueda o los filtros para ver más materiales.'
+              : 'Arrastra aquí el archivo (hoja «Detalle») o pulsa «Subir Excel». Cada fila es una posición de OC del cliente.'}
+            accion={!lineas.length && (
+              <Btn primary onClick={() => fileRef.current?.click()} disabled={importando}>
+                <Upload size={13} />Subir Excel
+              </Btn>
+            )} />
+        ) : isMobile ? (
+          // Vista móvil: cards con labels, agrupadas por proveedor (sin scroll horizontal)
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px' }}>
+            {grupos.map(g => {
+              const todos = g.lineas.every(l => seleccion.has(l.id))
+              return (
+                <div key={g.clave}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 2px 6px' }}>
+                    {checkbox(todos, () => toggleGrupo(g), 'Seleccionar todo el proveedor')}
+                    <span style={{ fontFamily: F, fontSize: 12.5, fontWeight: 700, color: C.text, flex: 1, minWidth: 0 }}>
+                      {g.nombre} <span style={{ color: C.muted, fontWeight: 400 }}>{g.lineas.length}</span>
+                    </span>
+                    <button onClick={() => abrirEmailGrupo(g)} title="Generar email a este proveedor"
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: F, fontSize: 11, fontWeight: 600, color: C.brand, background: C.card, border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '4px 9px', cursor: 'pointer' }}>
+                      <Mail size={12} />Email
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {g.lineas.map(l => {
+                      const dias = diasVencidos(l)
+                      return (
+                        <div key={l.id} onClick={() => toggle(l.id)}
+                          style={{ background: C.card, border: `1px solid ${seleccion.has(l.id) ? C.primary : C.border}`, borderRadius: 12, padding: 12, cursor: 'pointer' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            {checkbox(seleccion.has(l.id), () => toggle(l.id))}
+                            <span style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: C.primary }}>{l.documentoCompras}</span>
+                            <span style={{ fontFamily: F, fontSize: 11, color: C.muted }}>pos. {l.posicion}</span>
+                            {dias > 0 && (
+                              <span style={{ fontFamily: F, fontSize: 10.5, fontWeight: 600, color: C.danger, background: `${C.danger}12`, padding: '1px 8px', borderRadius: 10, marginLeft: 'auto' }}>
+                                {dias} día{dias !== 1 ? 's' : ''} vencida
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontFamily: F, fontSize: 12, color: C.text, marginTop: 6 }}>
+                            {l.material && <span style={{ fontWeight: 600 }}>{l.material} · </span>}{l.textoBreve}
+                          </div>
+                          <div style={{ fontFamily: F, fontSize: 11.5, color: C.muted, marginTop: 4, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                            <span>{fmtNum(l.cantidad)} {l.um}</span>
+                            <span>{fmtNum(l.valorNeto)} {l.moneda}</span>
+                            <span>Entrega: <FechaActualCell linea={l} /></span>
+                          </div>
+                          <div style={{ fontFamily: F, fontSize: 11.5, color: C.muted, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}
+                            onClick={e => e.stopPropagation()}>
+                            Confirmada:
+                            <DateInp value={l.fechaConfirmada} title="Fecha que confirmó o rectificó el proveedor"
+                              onChange={v => confirmarFecha(l, v)} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: C.card }}>
+            <thead><tr>
+              <Th> </Th><Th>OC</Th><Th>Pos</Th><Th>Material</Th><Th>Texto breve</Th><Th>F. documento</Th>
+              <Th right>Cantidad</Th><Th>UM</Th><Th right>Valor neto</Th><Th>F. entrega actual</Th>
+              <Th>F. entrega confirmada</Th><Th right>Días venc.</Th><Th>Status</Th>
+            </tr></thead>
+            <tbody>
+              {grupos.map(g => {
+                const todos = g.lineas.every(l => seleccion.has(l.id))
+                const email = emails.get(g.clave)
+                return [
+                  // Cabecera del grupo proveedor
+                  <tr key={`g-${g.clave}`} style={{ background: C.bg }}>
+                    <Td style={{ borderBottom: `1px solid ${C.border}` }}>
+                      {checkbox(todos, () => toggleGrupo(g), 'Seleccionar todo el proveedor')}
+                    </Td>
+                    <Td style={{ padding: '7px 10px' }} colSpan={11}>
+                      <span style={{ fontWeight: 700, color: C.text }}>{g.nombre}</span>
+                      {g.codigo && <span style={{ color: C.muted, marginLeft: 8, fontSize: 11 }}>{g.codigo}</span>}
+                      <span style={{ color: C.muted, marginLeft: 8, fontSize: 11 }}>{g.lineas.length} material{g.lineas.length !== 1 ? 'es' : ''}</span>
+                      {email && (
+                        <span style={{ color: C.muted, marginLeft: 8, fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <AtSign size={11} />{email}
                         </span>
-                      </div>
-                      <div style={{ marginTop: 6 }}><BarraAvance pct={oc.avancePct} width={120} /></div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', background: C.card }}>
-                <thead><tr>
-                  <Th> </Th><Th>N° OC</Th><Th>Cliente</Th><Th>Proveedor</Th><Th>Emisión</Th>
-                  <Th>OC recibida</Th><Th>F. confirmada</Th><Th>Nueva fecha</Th><Th>Hito</Th><Th>Avance</Th><Th> </Th>
-                </tr></thead>
-                <tbody>
-                  {lista.map(oc => {
-                    const sem = semaforoOC(oc)
-                    const cerrada = oc.hito === 'Cerrada'
+                      )}
+                    </Td>
+                    <Td right>
+                      <button onClick={() => abrirEmailGrupo(g)} title="Generar email a este proveedor (selección del grupo, o todo si no hay selección)"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: F, fontSize: 11, fontWeight: 600, color: C.brand, background: C.card, border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '3px 9px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <Mail size={12} />Generar email
+                      </button>
+                    </Td>
+                  </tr>,
+                  ...g.lineas.map(l => {
+                    const dias = diasVencidos(l)
                     return (
-                      <tr key={oc.id} onClick={() => setDetalleId(oc.id)} style={{ cursor: 'pointer' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#FAFBFC'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <Td><Semaforo sem={sem} /></Td>
-                        <Td style={{ color: C.primary, fontWeight: 600, textDecoration: 'underline' }}>{oc.numeroOC}</Td>
-                        <Td>{oc.cliente}</Td>
-                        <Td>{oc.proveedor || <span style={{ color: C.muted }}>—</span>}</Td>
-                        <Td style={{ whiteSpace: 'nowrap' }}>{fmtDate(oc.fechaEmision)}</Td>
-                        <Td>
-                          {oc.ocRecibidaProveedor ? (
-                            <span title={`Acuse: ${fmtDate(oc.fechaRecepcionOC)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: C.success, fontWeight: 600, fontSize: 11 }}>
-                              <CheckCircle2 size={14} />{fmtDate(oc.fechaRecepcionOC)}
-                            </span>
-                          ) : cerrada ? '—' : (
-                            <button onClick={e => { e.stopPropagation(); inline(() => marcarOCRecibida(oc.id, hoyISO()), `Acuse de recibo de la OC ${oc.numeroOC} registrado (hoy).`) }}
-                              title="Marcar que el proveedor recibió la OC (con fecha de hoy)"
-                              style={{ fontFamily: F, fontSize: 11, fontWeight: 600, color: C.brand, background: C.card, border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '3px 9px', cursor: 'pointer' }}>
-                              Marcar
-                            </button>
-                          )}
-                        </Td>
+                      <tr key={l.id} onClick={() => toggle(l.id)} style={{ cursor: 'pointer', background: seleccion.has(l.id) ? '#F0F7FF' : 'transparent' }}
+                        onMouseEnter={e => { if (!seleccion.has(l.id)) e.currentTarget.style.background = '#FAFBFC' }}
+                        onMouseLeave={e => { if (!seleccion.has(l.id)) e.currentTarget.style.background = 'transparent' }}>
+                        <Td>{checkbox(seleccion.has(l.id), () => toggle(l.id))}</Td>
+                        <Td style={{ color: C.primary, fontWeight: 600, whiteSpace: 'nowrap' }}>{l.documentoCompras}</Td>
+                        <Td>{l.posicion}</Td>
+                        <Td style={{ whiteSpace: 'nowrap' }}>{l.material || <span style={{ color: C.muted }}>—</span>}</Td>
+                        <Td style={{ maxWidth: 260 }}>{l.textoBreve}</Td>
+                        <Td style={{ whiteSpace: 'nowrap' }}>{fmtDate(l.fechaDocumento)}</Td>
+                        <Td right>{fmtNum(l.cantidad)}</Td>
+                        <Td>{l.um}</Td>
+                        <Td right style={{ whiteSpace: 'nowrap' }}>{fmtNum(l.valorNeto)} {l.moneda}</Td>
+                        <Td><FechaActualCell linea={l} /></Td>
                         <Td onClick={e => e.stopPropagation()}>
-                          <DateInp value={oc.fechaEntregaConfirmada} disabled={cerrada} title="Fecha de entrega confirmada por el proveedor"
-                            onChange={v => v && inline(() => confirmarFechaEntrega(oc.id, v, oc.hito), `Fecha confirmada para la OC ${oc.numeroOC}.`)} />
+                          <DateInp value={l.fechaConfirmada} title="Fecha que confirmó o rectificó el proveedor"
+                            onChange={v => confirmarFecha(l, v)} />
                         </Td>
-                        <Td onClick={e => e.stopPropagation()}>
-                          <DateInp value={oc.nuevaFechaEntrega} disabled={cerrada} title="Nueva fecha de entrega (re-programación)"
-                            onChange={v => inline(() => actualizarNuevaFecha(oc.id, v), `Nueva fecha de entrega guardada para la OC ${oc.numeroOC}.`)} />
+                        <Td right style={{ color: dias > 0 ? C.danger : C.muted, fontWeight: dias > 0 ? 600 : 400 }}>
+                          {dias > 0 ? dias : '—'}
                         </Td>
-                        <Td><HitoChip hito={oc.hito} /></Td>
-                        <Td><BarraAvance pct={oc.avancePct} /></Td>
-                        <Td right><ArrowRight size={14} style={{ color: C.muted }} /></Td>
+                        <Td style={{ color: C.muted, fontSize: 11, maxWidth: 160 }}>{l.status}</Td>
                       </tr>
                     )
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </>
-      )}
+                  }),
+                ]
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-      {modalInforme && (
-        <InformeModal ocs={ocs} clientes={clientes} clienteInicial={filtroCliente} isMobile={isMobile}
-          onClose={() => setModalInforme(false)} onAviso={m => flashAviso(m)} />
+      {modalEmail && (
+        <EmailModal grupo={modalEmail.grupo} lineas={modalEmail.lineas} isMobile={isMobile}
+          emailInicial={emails.get(modalEmail.grupo.clave) || ''}
+          onClose={() => setModalEmail(null)} onAviso={flashAviso}
+          onEmailGuardado={(clave, em) => setEmails(m => new Map(m).set(clave, em))} />
       )}
     </div>
   )

@@ -2226,7 +2226,7 @@ const VIEWS = {
   proveedores: { comp: Proveedores, title: 'Maestro de Proveedores' },
   materiales:  { comp: Materiales,  title: 'Maestro de Materiales'  },
   ordenes:     { comp: OrdenCompra, title: 'Órdenes de Compra'      },
-  seguimiento: { comp: Seguimiento, title: 'Seguimiento de Órdenes' },
+  seguimiento: { comp: Seguimiento, title: 'Seguimiento de Entregas' },
   acuerdos:    { comp: Acuerdos,    title: 'Acuerdos Marco'         },
 }
 

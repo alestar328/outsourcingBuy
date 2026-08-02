@@ -1,201 +1,153 @@
 // ══════════════════════════════════════════════════════════════════════════════
-//  Capa de datos: Seguimiento de OCs (expediting) ↔ Supabase
+//  Capa de datos: Seguimiento de entregas (Excel del cliente) ↔ Supabase
 // ══════════════════════════════════════════════════════════════════════════════
-//  Solo el equipo de Minos registra el avance (decisión socio 2026-07-14).
-//  El hito actual vive desnormalizado en ordenes_compra.hito; cada cambio se
-//  anota además en la bitácora oc_eventos. Las entregas se registran en
-//  oc_recepciones/oc_recepcion_items (parciales por línea) y el % de avance se
-//  calcula aquí. Mismo estilo que clientesRepo.js / ordenesRepo.js.
+//  Reformateo 2026-08: el seguimiento ya no nace de OCs internas sino del Excel
+//  de OCs que envía el cliente. Una fila = (documento_compras, posicion).
+//  Reimportar hace upsert conservando la fecha confirmada por el proveedor y
+//  marcando (fecha_entrega_anterior) las líneas cuya "Fecha de entrega actual"
+//  cambió. Las líneas que ya no vienen se desactivan, no se borran.
 // ══════════════════════════════════════════════════════════════════════════════
 
 import { supabase } from './supabaseClient.js'
 
-// Orden de la línea de vida (para saber qué hitos ya se cumplieron).
-export const HITOS = ['Emitida', 'Confirmada', 'En fabricación', 'Despachada', 'Recibida parcial', 'Recibida total', 'Cerrada']
-export const idxHito = h => HITOS.indexOf(h)
+const CHUNK = 400
 
-// El estado "clásico" de la OC se mantiene en sincronía con el hito de seguimiento
-// para que el resto de la app (y reportes antiguos) sigan teniendo sentido.
-const ESTADO_POR_HITO = {
-  'Emitida': 'Emitida', 'Confirmada': 'Emitida', 'En fabricación': 'Emitida',
-  'Despachada': 'En tránsito', 'Recibida parcial': 'En tránsito',
-  'Recibida total': 'Entregada', 'Cerrada': 'Cerrada',
-}
-
-function itemDbToUI(it, recibidoPorItem) {
-  const cantidad = Number(it.cantidad) || 0
-  const recibido = Math.min(recibidoPorItem.get(it.id) || 0, cantidad)
+function dbToUI(r) {
   return {
-    id:             it.id,
-    posicion:       it.posicion,
-    codigo:         it.codigo || '',
-    descripcion:    it.descripcion || '',
-    unidad:         it.unidad || 'UN',
-    cantidad,
-    precioUnitario: Number(it.precio_unitario) || 0,
-    total:          Number(it.total) || 0,
-    fechaEntrega:   it.fecha_entrega || '',    // comprometida
-    fechaEstimada:  it.fecha_estimada || '',   // estimada (re-programación por línea)
-    recibido,                                  // real acumulado de recepciones
+    id:                  r.id,
+    documentoCompras:    r.documento_compras,
+    posicion:            r.posicion,
+    gc:                  r.gc || '',
+    fechaDocumento:      r.fecha_documento || '',
+    textoBreve:          r.texto_breve || '',
+    material:            r.material || '',
+    proveedorCodigo:     r.proveedor_codigo || '',
+    proveedorNombre:     r.proveedor_nombre || '',
+    cantidad:            r.cantidad === null ? null : Number(r.cantidad),
+    um:                  r.um || '',
+    moneda:              r.moneda || '',
+    valorNeto:           r.valor_neto === null ? null : Number(r.valor_neto),
+    porEntregarCantidad: r.por_entregar_cantidad === null ? null : Number(r.por_entregar_cantidad),
+    porEntregarValor:    r.por_entregar_valor === null ? null : Number(r.por_entregar_valor),
+    fechaOriginal:       r.fecha_entrega_original || '',
+    fechaActual:         r.fecha_entrega_actual || '',
+    fechaAnterior:       r.fecha_entrega_anterior || '',
+    fechaConfirmada:     r.fecha_entrega_confirmada || '',
+    status:              r.status || '',
   }
 }
 
-function ocDbToUI(oc) {
-  const recibidoPorItem = new Map()
-  const recepciones = (oc.oc_recepciones || [])
-    .map(r => ({
-      id: r.id, fecha: r.fecha, referencia: r.referencia || '', nota: r.nota || '',
-      lineas: (r.oc_recepcion_items || []).map(l => ({ ocItemId: l.oc_item_id, cantidad: Number(l.cantidad) || 0 })),
-    }))
-    .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''))
-  for (const r of recepciones)
-    for (const l of r.lineas)
-      recibidoPorItem.set(l.ocItemId, (recibidoPorItem.get(l.ocItemId) || 0) + l.cantidad)
-
-  const items = (oc.oc_items || [])
-    .sort((a, b) => (a.posicion || 0) - (b.posicion || 0))
-    .map(it => itemDbToUI(it, recibidoPorItem))
-  const totalCantidad = items.reduce((s, it) => s + it.cantidad, 0)
-  const totalRecibido = items.reduce((s, it) => s + it.recibido, 0)
-
-  return {
-    id:                     oc.id,
-    numeroOC:               oc.numero_oc,
-    cliente:                oc.cliente?.razon_social || '',
-    clienteId:              oc.cliente_id,
-    proveedor:              oc.proveedor?.razon_social || '',
-    proveedorContacto:      oc.proveedor?.contacto_nombre || '',
-    proveedorEmail:         oc.proveedor?.contacto_email || '',
-    fechaEmision:           oc.fecha_emision || '',
-    estado:                 oc.estado,
-    hito:                   oc.hito || 'Emitida',
-    origen:                 oc.origen || 'minos',
-    ocRecibidaProveedor:    !!oc.oc_recibida_proveedor,
-    fechaRecepcionOC:       oc.fecha_recepcion_oc || '',
-    fechaEntregaConfirmada: oc.fecha_entrega_confirmada || '',
-    nuevaFechaEntrega:      oc.nueva_fecha_entrega || '',
-    fechaCierre:            oc.fecha_cierre || '',
-    moneda:                 oc.moneda || 'USD',
-    fechaEntregaOC:         oc.fecha_entrega || '',   // comprometida a nivel cabecera (si se capturó)
-    lugarEntrega:           oc.lugar_entrega || '',
-    plazoEntregaDias:       oc.plazo_entrega_dias,
-    items, recepciones, totalCantidad, totalRecibido,
-    avancePct: totalCantidad > 0 ? Math.round((totalRecibido / totalCantidad) * 100) : 0,
-  }
-}
-
-// OCs emitidas (todo lo que no sea Borrador) con líneas y recepciones, para la
-// List Report de Seguimiento. Las cerradas se incluyen: la UI decide el filtro.
-export async function listarOrdenesSeguimiento() {
+// Líneas activas para la List Report, agrupables por proveedor.
+export async function listarLineas() {
   const { data, error } = await supabase
-    .from('ordenes_compra')
-    .select(`
-      id, numero_oc, cliente_id, fecha_emision, estado, hito, origen,
-      oc_recibida_proveedor, fecha_recepcion_oc, fecha_entrega_confirmada,
-      nueva_fecha_entrega, fecha_cierre, moneda, lugar_entrega, plazo_entrega_dias, fecha_entrega,
-      cliente:clientes(razon_social),
-      proveedor:proveedores(razon_social, contacto_nombre, contacto_email),
-      oc_items(id, posicion, codigo, descripcion, unidad, cantidad, precio_unitario, total, fecha_entrega, fecha_estimada),
-      oc_recepciones(id, fecha, referencia, nota, oc_recepcion_items(oc_item_id, cantidad))
-    `)
-    .neq('estado', 'Borrador')
-    .order('fecha_emision', { ascending: false })
+    .from('seg_lineas')
+    .select('*')
+    .eq('activo', true)
+    .order('proveedor_nombre', { ascending: true })
+    .order('documento_compras', { ascending: true })
+    .order('posicion', { ascending: true })
   if (error) throw error
-  return (data || []).map(ocDbToUI)
+  return (data || []).map(dbToUI)
 }
 
-// Bitácora de una OC (hitos + notas), más reciente primero.
-export async function listarEventos(ocId) {
-  const { data, error } = await supabase
-    .from('oc_eventos')
-    .select('id, hito, fecha, nota, created_at')
-    .eq('oc_id', ocId)
-    .order('created_at', { ascending: false })
+// Importa el Excel del cliente (líneas ya parseadas). Upsert por clave natural:
+//  · nueva línea ⇒ insert
+//  · existente   ⇒ update con lo que manda el cliente, PRESERVANDO la fecha
+//    confirmada; si la "actual" cambió, la previa queda en fecha_entrega_anterior
+//  · líneas que ya no vienen ⇒ activo=false
+// Devuelve { total, nuevas, actualizadas, cambiosFecha, desactivadas }.
+export async function importarLineas(lineas) {
+  if (!lineas?.length) throw new Error('El Excel no contiene líneas de seguimiento.')
+
+  const { data: actuales, error } = await supabase
+    .from('seg_lineas')
+    .select('id, documento_compras, posicion, fecha_entrega_actual, fecha_entrega_anterior, fecha_entrega_confirmada')
   if (error) throw error
-  return (data || []).map(e => ({ id: e.id, hito: e.hito, fecha: e.fecha, nota: e.nota || '', createdAt: e.created_at }))
-}
+  const porClave = new Map((actuales || []).map(r => [`${r.documento_compras}|${r.posicion}`, r]))
 
-async function insertarEvento(ocId, { hito = null, fecha = null, nota = null }) {
-  const { error } = await supabase.from('oc_eventos')
-    .insert({ oc_id: ocId, hito, fecha: fecha || undefined, nota })
-  if (error) throw error
-}
-
-// El proveedor acusó recibo de la OC (umbral socio: 1 día hábil desde emisión).
-export async function marcarOCRecibida(ocId, fecha) {
-  const { error } = await supabase.from('ordenes_compra')
-    .update({ oc_recibida_proveedor: true, fecha_recepcion_oc: fecha })
-    .eq('id', ocId)
-  if (error) throw error
-  await insertarEvento(ocId, { fecha, nota: 'Proveedor acusó recibo de la OC' })
-}
-
-// El proveedor confirmó fecha de entrega (umbral socio: 2 días hábiles). Si la OC
-// seguía en "Emitida", pasa a "Confirmada".
-export async function confirmarFechaEntrega(ocId, fecha, hitoActual) {
-  const upd = { fecha_entrega_confirmada: fecha }
-  const sube = idxHito(hitoActual) < idxHito('Confirmada')
-  if (sube) { upd.hito = 'Confirmada'; upd.estado = ESTADO_POR_HITO['Confirmada'] }
-  const { error } = await supabase.from('ordenes_compra').update(upd).eq('id', ocId)
-  if (error) throw error
-  await insertarEvento(ocId, {
-    hito: sube ? 'Confirmada' : null,
-    nota: `Proveedor confirmó fecha de entrega: ${fecha}`,
-  })
-}
-
-// Re-programación de la entrega ("nueva fecha de entrega" a nivel OC).
-export async function actualizarNuevaFecha(ocId, fecha) {
-  const { error } = await supabase.from('ordenes_compra')
-    .update({ nueva_fecha_entrega: fecha || null }).eq('id', ocId)
-  if (error) throw error
-  await insertarEvento(ocId, { nota: fecha ? `Nueva fecha de entrega: ${fecha}` : 'Se quitó la nueva fecha de entrega' })
-}
-
-// Cambia el hito de la línea de vida (En fabricación, Despachada, Cerrada…).
-export async function cambiarHito(ocId, hito, { fecha, nota } = {}) {
-  const upd = { hito, estado: ESTADO_POR_HITO[hito] || 'Emitida' }
-  if (hito === 'Cerrada') upd.fecha_cierre = fecha || new Date().toISOString().slice(0, 10)
-  const { error } = await supabase.from('ordenes_compra').update(upd).eq('id', ocId)
-  if (error) throw error
-  await insertarEvento(ocId, { hito, fecha, nota })
-}
-
-// Nota libre de gestión (llamada al proveedor, correo, incidencia…).
-export async function registrarNota(ocId, nota) {
-  await insertarEvento(ocId, { nota })
-}
-
-// Fecha estimada de una línea concreta.
-export async function actualizarFechaEstimada(ocItemId, fecha) {
-  const { error } = await supabase.from('oc_items')
-    .update({ fecha_estimada: fecha || null }).eq('id', ocItemId)
-  if (error) throw error
-}
-
-// Registra una recepción en almacén del cliente (aviso por correo/llamada).
-// `lineas` = [{ ocItemId, cantidad }] con cantidad > 0. `esTotal` lo calcula la UI
-// comparando lo acumulado contra lo pedido; decide el hito resultante.
-export async function registrarRecepcion(ocId, { fecha, referencia, nota, lineas, esTotal }) {
-  const filas = (lineas || []).filter(l => Number(l.cantidad) > 0)
-  if (!filas.length) throw new Error('Indica la cantidad recibida en al menos una línea.')
-
-  const { data: rec, error } = await supabase.from('oc_recepciones')
-    .insert({ oc_id: ocId, fecha, referencia: referencia?.trim() || null, nota: nota?.trim() || null })
-    .select('id').single()
-  if (error) throw error
-
-  const { error: e2 } = await supabase.from('oc_recepcion_items')
-    .insert(filas.map(l => ({ recepcion_id: rec.id, oc_item_id: l.ocItemId, cantidad: Number(l.cantidad) })))
-  if (e2) {
-    await supabase.from('oc_recepciones').delete().eq('id', rec.id)  // rollback de cabecera
-    throw e2
+  const ahora = new Date().toISOString()
+  let nuevas = 0, actualizadas = 0, cambiosFecha = 0
+  const filas = []
+  const vistas = new Set()
+  for (const l of lineas) {
+    const clave = `${l.documentoCompras}|${l.posicion}`
+    if (vistas.has(clave)) continue                  // duplicado dentro del propio Excel
+    vistas.add(clave)
+    const prev = porClave.get(clave)
+    const cambio = prev && prev.fecha_entrega_actual && l.fechaActual &&
+                   prev.fecha_entrega_actual !== l.fechaActual
+    if (cambio) cambiosFecha++
+    if (prev) actualizadas++; else nuevas++
+    filas.push({
+      documento_compras:        l.documentoCompras,
+      posicion:                 l.posicion,
+      gc:                       l.gc || null,
+      fecha_documento:          l.fechaDocumento || null,
+      texto_breve:              l.textoBreve || null,
+      material:                 l.material || null,
+      proveedor_codigo:         l.proveedorCodigo || null,
+      proveedor_nombre:         l.proveedorNombre || null,
+      cantidad:                 l.cantidad ?? null,
+      um:                       l.um || null,
+      moneda:                   l.moneda || null,
+      valor_neto:               l.valorNeto ?? null,
+      por_entregar_cantidad:    l.porEntregarCantidad ?? null,
+      por_entregar_valor:       l.porEntregarValor ?? null,
+      fecha_entrega_original:   l.fechaOriginal || null,
+      fecha_entrega_actual:     l.fechaActual || null,
+      // El upsert escribe todas las columnas: arrastramos los valores que se preservan.
+      fecha_entrega_anterior:   cambio ? prev.fecha_entrega_actual : (prev?.fecha_entrega_anterior || null),
+      fecha_entrega_confirmada: prev?.fecha_entrega_confirmada || null,
+      status:                   l.status || null,
+      activo:                   true,
+      updated_at:               ahora,
+    })
   }
 
-  const hito = esTotal ? 'Recibida total' : 'Recibida parcial'
-  const { error: e3 } = await supabase.from('ordenes_compra')
-    .update({ hito, estado: ESTADO_POR_HITO[hito] }).eq('id', ocId)
-  if (e3) throw e3
-  await insertarEvento(ocId, { hito, fecha, nota: `Recepción registrada${referencia ? ` (${referencia})` : ''}` })
-  return rec.id
+  for (let i = 0; i < filas.length; i += CHUNK) {
+    const { error: e } = await supabase
+      .from('seg_lineas')
+      .upsert(filas.slice(i, i + CHUNK), { onConflict: 'documento_compras,posicion' })
+    if (e) throw e
+  }
+
+  // Las líneas que el cliente ya no manda salen de la vista (histórico conservado).
+  const faltan = (actuales || []).filter(r => !vistas.has(`${r.documento_compras}|${r.posicion}`)).map(r => r.id)
+  for (let i = 0; i < faltan.length; i += CHUNK) {
+    const { error: e } = await supabase
+      .from('seg_lineas')
+      .update({ activo: false, updated_at: ahora })
+      .in('id', faltan.slice(i, i + CHUNK))
+    if (e) throw e
+  }
+
+  return { total: filas.length, nuevas, actualizadas, cambiosFecha, desactivadas: faltan.length }
+}
+
+// Fecha que el proveedor confirmó o rectificó para una línea (edición inline).
+export async function confirmarFechaEntrega(id, fecha) {
+  const { error } = await supabase
+    .from('seg_lineas')
+    .update({ fecha_entrega_confirmada: fecha || null, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ─── Mini-directorio de emails de proveedor ───────────────────────────────────
+
+// Map: proveedor_codigo → email (se precarga al abrir el módulo).
+export async function listarEmailsProveedores() {
+  const { data, error } = await supabase.from('seg_proveedor_emails').select('proveedor_codigo, email')
+  if (error) throw error
+  return new Map((data || []).map(r => [r.proveedor_codigo, r.email]))
+}
+
+// Guarda/actualiza el email capturado al generar un correo.
+export async function guardarEmailProveedor({ codigo, nombre, email }) {
+  const clave = (codigo || nombre || '').trim()
+  if (!clave || !email?.trim()) return
+  const { error } = await supabase
+    .from('seg_proveedor_emails')
+    .upsert({ proveedor_codigo: clave, proveedor_nombre: nombre || null, email: email.trim(), updated_at: new Date().toISOString() })
+  if (error) throw error
 }

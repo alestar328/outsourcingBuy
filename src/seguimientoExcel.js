@@ -1,83 +1,137 @@
 // ══════════════════════════════════════════════════════════════════════════════
-//  Informe de estado para el cliente (Excel + texto de correo)
+//  Excel del Seguimiento de entregas
 // ══════════════════════════════════════════════════════════════════════════════
-//  Decisión socio (2026-07-14): el informe lista TODAS las OCs pendientes de
-//  entrega del cliente (pivotado por OC, no por SOLPED), y el sistema emite el
-//  texto del correo y el Excel listos para copiar/pegar y adjuntar — el envío
-//  sigue siendo manual (fase 1 sin correos automáticos).
+//  · Importación: hoja "Detalle" del `seguimiento_clientes.xlsx` que envía el
+//    cliente (una fila por posición de OC). Las cabeceras se localizan por nombre
+//    para tolerar filas en blanco y cambios de orden de columnas.
+//  · Exportación: Excel por proveedor con las columnas acordadas, que se adjunta
+//    al correo pidiendo confirmar la "Fecha de entrega actual".
+//  · Texto del correo genérico al proveedor (el envío es manual: copiar y pegar).
 // ══════════════════════════════════════════════════════════════════════════════
 
 import * as XLSX from 'xlsx'
-import { fmtDate, fechaComprometida, fechaObjetivo, hoyISO, esPendienteEntrega } from './seguimientoLogic.js'
+import { excelDateToISO, partirProveedor, fmtDate, hoyISO } from './seguimientoLogic.js'
 
-const siNo = v => (v ? 'Sí' : 'No')
+// Normaliza una cabecera: minúsculas, sin saltos de línea ni espacios repetidos.
+const norm = s => String(s ?? '').replace(/\s+/g, ' ').trim().toLowerCase()
 
-// Construye y descarga el Excel de OCs pendientes de entrega del cliente.
-// Hoja 1: resumen por OC. Hoja 2: detalle de líneas pendientes.
-export function exportarInformeCliente({ clienteNombre, ocs }) {
-  const pendientes = ocs.filter(o => o.cliente === clienteNombre && esPendienteEntrega(o))
+// Cabecera del Excel del cliente → campo interno.
+const CAMPOS = {
+  'documento compras':        'documentoCompras',
+  'pos':                      'posicion',
+  'gc':                       'gc',
+  'fecha documento':          'fechaDocumento',
+  'texto breve':              'textoBreve',
+  'material':                 'material',
+  'proveedor':                'proveedor',
+  'cantidad de pedido':       'cantidad',
+  'um':                       'um',
+  'moneda':                   'moneda',
+  'valor neto de pedido':     'valorNeto',
+  'por entregar (cantidad)':  'porEntregarCantidad',
+  'por entregar (valor)':     'porEntregarValor',
+  'fecha de entrega original': 'fechaOriginal',
+  'fecha de entrega actual':  'fechaActual',
+  'status':                   'status',
+}
+const FECHAS = new Set(['fechaDocumento', 'fechaOriginal', 'fechaActual'])
+const NUMEROS = new Set(['cantidad', 'valorNeto', 'porEntregarCantidad', 'porEntregarValor'])
 
-  const resumen = [[
-    'N° OC', 'Proveedor', 'F. emisión', '¿Proveedor recibió la OC?', 'Estado',
-    'F. comprometida', 'F. confirmada proveedor', 'Nueva fecha entrega', 'Avance %', 'Líneas pendientes',
-  ]]
-  for (const oc of pendientes) {
-    const lineasPend = oc.items.filter(it => it.recibido < it.cantidad).length
-    resumen.push([
-      oc.numeroOC, oc.proveedor, fmtDate(oc.fechaEmision), siNo(oc.ocRecibidaProveedor), oc.hito,
-      fmtDate(fechaComprometida(oc)), fmtDate(oc.fechaEntregaConfirmada), fmtDate(oc.nuevaFechaEntrega),
-      oc.avancePct, lineasPend,
-    ])
-  }
-
-  const detalle = [[
-    'N° OC', 'Pos.', 'Código', 'Descripción', 'UM',
-    'Cant. pedida', 'Cant. recibida', 'Pendiente', 'F. comprometida', 'F. estimada',
-  ]]
-  for (const oc of pendientes)
-    for (const it of oc.items) {
-      if (it.recibido >= it.cantidad) continue
-      detalle.push([
-        oc.numeroOC, it.posicion ?? '', it.codigo, it.descripcion, it.unidad,
-        it.cantidad, it.recibido, it.cantidad - it.recibido,
-        fmtDate(it.fechaEntrega), fmtDate(it.fechaEstimada),
-      ])
+// Lee el workbook del cliente y devuelve las líneas normalizadas.
+// Busca la hoja cuya cabecera contiene "Documento compras" (preferencia: "Detalle").
+export function parsearSeguimientoExcel(wb) {
+  const nombres = [...wb.SheetNames].sort((a, b) =>
+    (norm(b) === 'detalle') - (norm(a) === 'detalle'))
+  for (const nombre of nombres) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[nombre], { header: 1, defval: null })
+    // La cabecera puede no ser la primera fila (el cliente deja filas en blanco).
+    for (let h = 0; h < Math.min(rows.length, 12); h++) {
+      const head = (rows[h] || []).map(norm)
+      if (!head.includes('documento compras')) continue
+      const colDe = {}
+      head.forEach((c, i) => { if (CAMPOS[c] && colDe[CAMPOS[c]] === undefined) colDe[CAMPOS[c]] = i })
+      if (colDe.posicion === undefined) break        // hoja resumen (sin Pos) ⇒ probar otra
+      return { hoja: nombre, lineas: leerLineas(rows, h + 1, colDe) }
     }
-
-  const wb = XLSX.utils.book_new()
-  const ws1 = XLSX.utils.aoa_to_sheet(resumen)
-  ws1['!cols'] = [{ wch: 12 }, { wch: 34 }, { wch: 11 }, { wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 9 }, { wch: 14 }]
-  XLSX.utils.book_append_sheet(wb, ws1, 'OCs pendientes')
-  const ws2 = XLSX.utils.aoa_to_sheet(detalle)
-  ws2['!cols'] = [{ wch: 12 }, { wch: 6 }, { wch: 14 }, { wch: 46 }, { wch: 6 }, { wch: 11 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 12 }]
-  XLSX.utils.book_append_sheet(wb, ws2, 'Detalle líneas')
-
-  const safe = (clienteNombre || 'cliente').replace(/[^\w.-]+/g, '_').slice(0, 40)
-  XLSX.writeFile(wb, `MinosERP_Seguimiento_${safe}_${hoyISO()}.xlsx`)
-  return pendientes.length
+  }
+  throw new Error('No se encontró la hoja de detalle: ninguna cabecera contiene «Documento compras» y «Pos». Revisa que sea el Excel de seguimiento del cliente.')
 }
 
-// Texto del correo listo para copiar y pegar (el Excel va adjunto).
-export function textoCorreoInforme({ clienteNombre, ocs }) {
-  const pendientes = ocs.filter(o => o.cliente === clienteNombre && esPendienteEntrega(o))
-  const lineas = pendientes.map(oc => {
-    const obj = fechaObjetivo(oc)
+function leerLineas(rows, desde, colDe) {
+  const lineas = []
+  for (let i = desde; i < rows.length; i++) {
+    const row = rows[i] || []
+    const cell = campo => colDe[campo] === undefined ? null : row[colDe[campo]]
+    const doc = String(cell('documentoCompras') ?? '').trim()
+    if (!doc) continue                               // filas vacías o de relleno
+    const l = { documentoCompras: doc, posicion: String(cell('posicion') ?? '').trim() || '0' }
+    for (const campo of Object.keys(colDe)) {
+      if (campo === 'documentoCompras' || campo === 'posicion' || campo === 'proveedor') continue
+      const v = cell(campo)
+      if (FECHAS.has(campo)) l[campo] = excelDateToISO(v)
+      else if (NUMEROS.has(campo)) l[campo] = v === null || v === '' ? null : Number(v) || 0
+      else l[campo] = String(v ?? '').trim()
+    }
+    const { codigo, nombre } = partirProveedor(cell('proveedor'))
+    l.proveedorCodigo = codigo
+    l.proveedorNombre = nombre
+    lineas.push(l)
+  }
+  return lineas
+}
+
+// ─── Excel por proveedor (adjunto del correo) ─────────────────────────────────
+// Columnas acordadas: solo lo que el proveedor necesita para confirmar fechas.
+export function exportarExcelProveedor({ proveedorNombre, lineas }) {
+  const aoa = [[
+    'Material', 'Texto breve', 'Fecha documento', 'Proveedor', 'Cantidad de pedido',
+    'UM', 'Moneda', 'Valor neto pedido', 'Fecha de entrega actual', 'Fecha de entrega confirmada',
+  ]]
+  for (const l of lineas) {
+    aoa.push([
+      l.material || '', l.textoBreve || '', fmtDate(l.fechaDocumento), l.proveedorNombre || proveedorNombre,
+      l.cantidad ?? '', l.um || '', l.moneda || '', l.valorNeto ?? '',
+      fmtDate(l.fechaActual), fmtDate(l.fechaConfirmada),
+    ])
+  }
+  const ws = XLSX.utils.aoa_to_sheet(aoa)
+  ws['!cols'] = [
+    { wch: 14 }, { wch: 44 }, { wch: 14 }, { wch: 34 }, { wch: 15 },
+    { wch: 6 }, { wch: 8 }, { wch: 15 }, { wch: 20 }, { wch: 24 },
+  ]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Confirmación entregas')
+  const safe = (proveedorNombre || 'proveedor').replace(/[^\w.-]+/g, '_').slice(0, 40)
+  XLSX.writeFile(wb, `MinosERP_Confirmacion_${safe}_${hoyISO()}.xlsx`)
+}
+
+// ─── Correo genérico al proveedor ─────────────────────────────────────────────
+
+export function asuntoCorreoProveedor(lineas) {
+  const ocs = [...new Set(lineas.map(l => l.documentoCompras))]
+  const lista = ocs.slice(0, 3).join(', ') + (ocs.length > 3 ? '…' : '')
+  return `Confirmación de fechas de entrega — OC${ocs.length !== 1 ? 's' : ''} ${lista}`
+}
+
+export function textoCorreoProveedor({ proveedorNombre, lineas }) {
+  const resumen = lineas.map(l => {
     const partes = [
-      `• OC ${oc.numeroOC} — ${oc.proveedor || 'proveedor por confirmar'} — ${oc.hito}`,
-      obj ? `entrega prevista ${fmtDate(obj)}` : 'fecha de entrega por confirmar',
+      `• OC ${l.documentoCompras} pos. ${l.posicion}`,
+      l.material ? `${l.material} — ${l.textoBreve}` : l.textoBreve,
+      `${l.cantidad ?? ''} ${l.um || ''}`.trim(),
+      `entrega prevista ${fmtDate(l.fechaActual) || 'por definir'}`,
     ]
-    if (oc.avancePct > 0) partes.push(`avance ${oc.avancePct}%`)
-    return partes.join(' — ')
+    return partes.filter(Boolean).join(' — ')
   })
   return [
-    `Estimados señores ${clienteNombre}:`,
+    `Estimados señores ${proveedorNombre}:`,
     '',
-    `Les compartimos el estado de sus órdenes de compra pendientes de entrega al ${fmtDate(hoyISO())}:`,
+    `Como parte del seguimiento de las órdenes de compra que tienen en curso con nuestro cliente, les solicitamos confirmar si la fecha de entrega prevista de los siguientes materiales sigue vigente, o indicarnos la fecha rectificada en caso de haber cambiado:`,
     '',
-    ...(lineas.length ? lineas : ['(Sin órdenes de compra pendientes de entrega a la fecha.)']),
+    ...resumen,
     '',
-    'Adjuntamos el detalle línea a línea en el archivo Excel.',
-    'Quedamos atentos a cualquier consulta.',
+    'Adjuntamos el detalle en Excel: agradeceremos completar la columna «Fecha de entrega confirmada» y devolvernos el archivo.',
+    'Quedamos atentos a su pronta respuesta.',
     '',
     'Saludos cordiales,',
     'Equipo Minos — Gestión de Compras',
