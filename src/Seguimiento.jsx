@@ -4,26 +4,29 @@
 //  El cliente envía un Excel con sus OCs ya emitidas (hoja "Detalle"). Minos
 //  contacta a cada proveedor para que confirme o rectifique la "Fecha de entrega
 //  actual" de sus materiales. List Report agrupada por proveedor con selección,
-//  fecha confirmada editable en línea y «Generar email» (texto + Excel adjunto;
-//  el envío es manual). Reimportar preserva confirmadas y marca cambios de fecha.
+//  fecha confirmada editable en línea y «Generar email»: el correo se envía desde
+//  la app (Resend vía Edge Function) o se copia para enviarlo a mano. Cada envío
+//  queda registrado, lo que permite ver quién no responde pasados X días.
+//  Reimportar preserva confirmadas y marca los cambios de fecha del cliente.
 // ══════════════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import {
-  listarLineas, importarLineas, confirmarFechaEntrega,
-  listarEmailsProveedores, guardarEmailProveedor,
+  listarLineas, importarLineas, confirmarFechaEntrega, marcarRespondido,
+  listarEmailsProveedores, guardarEmailProveedor, enviarCorreoProveedor,
 } from './seguimientoRepo.js'
 import {
-  parsearSeguimientoExcel, exportarExcelProveedor,
+  parsearSeguimientoExcel, exportarExcelProveedor, excelProveedorAdjunto,
   asuntoCorreoProveedor, textoCorreoProveedor,
 } from './seguimientoExcel.js'
 import {
   fmtDate, claveProveedor, diasVencidos, emailValido,
+  estadoRespuesta, diasDesdeEnvio, UMBRAL_SIN_RESPUESTA_DIAS, OPCIONES_UMBRAL,
 } from './seguimientoLogic.js'
 import {
   RefreshCw, CheckCircle2, AlertCircle, X, Mail, Copy, Search, Truck,
-  Upload, FileSpreadsheet, AtSign,
+  Upload, FileSpreadsheet, AtSign, Send, Clock,
 } from 'lucide-react'
 
 const C = {
@@ -154,12 +157,40 @@ function FechaActualCell({ linea }) {
   )
 }
 
+// Estado de la gestión con el proveedor (enviado / esperando / sin respuesta).
+const EST_ESTILO = {
+  sin_enviar:    { bg: '#EFEFEF', fg: C.muted,  txt: 'Sin enviar' },
+  esperando:     { bg: '#E8F2FF', fg: C.brand,  txt: 'Esperando' },
+  sin_respuesta: { bg: '#FDF3E7', fg: '#8F5B00', txt: 'Sin respuesta' },
+  respondido:    { bg: '#E3F2E7', fg: '#106A32', txt: 'Respondió' },
+}
+function EstadoChip({ linea, umbral }) {
+  const est = estadoRespuesta(linea, umbral)
+  const s = EST_ESTILO[est]
+  const dias = diasDesdeEnvio(linea)
+  const detalle = est === 'sin_enviar' ? 'Aún no se ha escrito al proveedor por esta línea'
+    : est === 'respondido' ? `Respondió el ${fmtDate(linea.respondidoAt?.slice(0, 10))}`
+    : `Enviado hace ${dias} día${dias !== 1 ? 's' : ''}`
+  return (
+    <span title={detalle} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+      <span style={{ fontFamily: F, fontSize: 10.5, fontWeight: 600, color: s.fg, background: s.bg, padding: '2px 8px', borderRadius: 10 }}>
+        {s.txt}
+      </span>
+      {(est === 'esperando' || est === 'sin_respuesta') && (
+        <span style={{ fontFamily: F, fontSize: 10, color: est === 'sin_respuesta' ? C.warn : C.muted }}>{dias}d</span>
+      )}
+    </span>
+  )
+}
+
 // ─── Modal: generar email al proveedor ────────────────────────────────────────
 
-function EmailModal({ grupo, lineas, emailInicial, isMobile, onClose, onAviso, onEmailGuardado }) {
+function EmailModal({ grupo, lineas, emailInicial, isMobile, onClose, onAviso, onEmailGuardado, onEnviado }) {
   const [email, setEmail] = useState(emailInicial || '')
+  const [texto, setTexto] = useState(() => textoCorreoProveedor({ proveedorNombre: grupo.nombre, lineas }))
+  const [enviando, setEnviando] = useState(false)
+  const [errEnvio, setErrEnvio] = useState(null)
   const asunto = asuntoCorreoProveedor(lineas)
-  const texto = textoCorreoProveedor({ proveedorNombre: grupo.nombre, lineas })
 
   // El email capturado se recuerda para la próxima vez (mini-directorio por código SAP).
   const persistirEmail = () => {
@@ -182,16 +213,39 @@ function EmailModal({ grupo, lineas, emailInicial, isMobile, onClose, onAviso, o
     onAviso(`Excel de ${grupo.nombre} descargado (${lineas.length} material${lineas.length !== 1 ? 'es' : ''}) — adjúntalo al correo.`)
   }
 
+  // Envío desde la app: la Edge Function manda por Resend y registra el envío.
+  const enviar = async () => {
+    setEnviando(true); setErrEnvio(null)
+    persistirEmail()
+    try {
+      const r = await enviarCorreoProveedor({
+        para: email.trim(), asunto, texto,
+        adjunto: excelProveedorAdjunto({ proveedorNombre: grupo.nombre, lineas }),
+        proveedor: { codigo: grupo.codigo, nombre: grupo.nombre },
+        lineaIds: lineas.map(l => l.id),
+      })
+      onEnviado(`Correo enviado a ${grupo.nombre} (${email.trim()}) con ${lineas.length} material${lineas.length !== 1 ? 'es' : ''}.` +
+        (r?.aviso ? ` ${r.aviso}` : ''))
+    } catch (e) { setErrEnvio(e.message); setEnviando(false) }
+  }
+
   const emailInvalido = !!email.trim() && !emailValido(email.trim())
+  const puedeEnviar = !!email.trim() && !emailInvalido && !enviando
 
   return (
     <Modal isMobile={isMobile} width={640} onClose={onClose}
       title="Generar email al proveedor"
-      subtitle={`${grupo.nombre}${grupo.codigo ? ` · ${grupo.codigo}` : ''} · ${lineas.length} material${lineas.length !== 1 ? 'es' : ''} · el envío es manual`}
+      subtitle={`${grupo.nombre}${grupo.codigo ? ` · ${grupo.codigo}` : ''} · ${lineas.length} material${lineas.length !== 1 ? 'es' : ''}`}
       footer={<>
-        <Btn onClick={copiar}><Copy size={13} />Copiar correo</Btn>
-        <Btn primary onClick={descargar}><FileSpreadsheet size={13} />Descargar Excel adjunto</Btn>
+        <Btn onClick={copiar} disabled={enviando}><Copy size={13} />Copiar</Btn>
+        <Btn onClick={descargar} disabled={enviando}><FileSpreadsheet size={13} />Descargar Excel</Btn>
+        <Btn primary onClick={enviar} disabled={!puedeEnviar}
+          title={!email.trim() ? 'Escribe el email del proveedor' : 'Enviar ahora con el Excel adjunto'}>
+          {enviando ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={13} />}
+          {enviando ? 'Enviando…' : 'Enviar ahora'}
+        </Btn>
       </>}>
+      {errEnvio && <div style={{ marginBottom: 12 }}><Banner tipo="error">{errEnvio}</Banner></div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Dato label="Email del proveedor">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -200,16 +254,21 @@ function EmailModal({ grupo, lineas, emailInicial, isMobile, onClose, onAviso, o
               style={{ fontFamily: F, fontSize: 12, border: `1px solid ${emailInvalido ? C.danger : C.borderInput}`, borderRadius: 6, padding: '6px 8px', flex: 1, outline: 'none' }} />
           </div>
           <div style={{ fontSize: 11, color: emailInvalido ? C.danger : C.muted, marginTop: 4 }}>
-            {emailInvalido ? 'Formato de email inválido.' : 'Se guarda al copiar o descargar, para reutilizarlo la próxima vez.'}
+            {emailInvalido ? 'Formato de email inválido.'
+              : 'Se guarda para reutilizarlo la próxima vez. Las respuestas del proveedor llegarán a tu propio buzón.'}
           </div>
         </Dato>
         <Dato label="Asunto">
           <div style={{ fontFamily: F, fontSize: 12, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 8px' }}>{asunto}</div>
         </Dato>
-        <Dato label="Texto del correo (copiar y pegar)">
-          <textarea readOnly value={texto} rows={isMobile ? 12 : 14}
-            style={{ fontFamily: 'ui-monospace, Consolas, monospace', fontSize: 11.5, border: `1px solid ${C.borderInput}`, borderRadius: 8, padding: 10, width: '100%', boxSizing: 'border-box', outline: 'none', resize: 'vertical', background: C.bg, color: C.text }} />
+        <Dato label="Texto del correo (editable)">
+          <textarea value={texto} onChange={e => setTexto(e.target.value)} rows={isMobile ? 10 : 13}
+            style={{ fontFamily: 'ui-monospace, Consolas, monospace', fontSize: 11.5, border: `1px solid ${C.borderInput}`, borderRadius: 8, padding: 10, width: '100%', boxSizing: 'border-box', outline: 'none', resize: 'vertical', background: C.card, color: C.text }} />
         </Dato>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: F, fontSize: 11, color: C.muted }}>
+          <FileSpreadsheet size={13} style={{ flexShrink: 0 }} />
+          Se adjunta automáticamente el Excel con las {lineas.length} línea{lineas.length !== 1 ? 's' : ''} y la columna «Fecha de entrega confirmada» para que la completen.
+        </div>
       </div>
     </Modal>
   )
@@ -227,6 +286,8 @@ export default function Seguimiento({ isMobile }) {
   const [busca, setBusca] = useState('')
   const [filtroProveedor, setFiltroProveedor] = useState('')
   const [soloVencidas, setSoloVencidas] = useState(false)
+  const [soloSinRespuesta, setSoloSinRespuesta] = useState(false)
+  const [umbral, setUmbral] = useState(UMBRAL_SIN_RESPUESTA_DIAS)
   const [seleccion, setSeleccion] = useState(new Set())
   const [modalEmail, setModalEmail] = useState(null)   // { grupo, lineas }
   const fileRef = useRef(null)
@@ -268,12 +329,17 @@ export default function Seguimiento({ isMobile }) {
   const filtradas = useMemo(() => lineas.filter(l => {
     if (filtroProveedor && claveProveedor(l) !== filtroProveedor) return false
     if (soloVencidas && diasVencidos(l) === 0) return false
+    if (soloSinRespuesta && estadoRespuesta(l, umbral) !== 'sin_respuesta') return false
     if (busca.trim()) {
       const q = busca.trim().toLowerCase()
       if (![l.documentoCompras, l.material, l.textoBreve, l.proveedorNombre].some(v => (v || '').toLowerCase().includes(q))) return false
     }
     return true
-  }), [lineas, filtroProveedor, soloVencidas, busca])
+  }), [lineas, filtroProveedor, soloVencidas, soloSinRespuesta, umbral, busca])
+
+  // Cuántas líneas llevan más del umbral sin respuesta (contador del filtro).
+  const nSinRespuesta = useMemo(
+    () => lineas.filter(l => estadoRespuesta(l, umbral) === 'sin_respuesta').length, [lineas, umbral])
 
   const grupos = useMemo(() => {
     const map = new Map()
@@ -305,20 +371,37 @@ export default function Seguimiento({ isMobile }) {
   }, [seleccion, lineas])
 
   const abrirEmailSeleccion = () => { if (grupoSeleccion) setModalEmail(grupoSeleccion) }
-  // Desde la cabecera de un grupo: sus líneas seleccionadas, o todas si no hay ninguna.
-  const abrirEmailGrupo = g => {
-    const sel = g.lineas.filter(l => seleccion.has(l.id))
-    setModalEmail({ grupo: g, lineas: sel.length ? sel : g.lineas })
+
+  // Tras enviar: refrescamos para traer `ultimo_envio_at` y limpiamos la selección.
+  const trasEnviar = async msg => {
+    setModalEmail(null)
+    setSeleccion(new Set())
+    await refrescar()
+    flashAviso(msg)
   }
 
   const confirmarFecha = (linea, fecha) => {
     setError(null)
     confirmarFechaEntrega(linea.id, fecha)
-      .then(() => {
-        setLineas(ls => ls.map(l => l.id === linea.id ? { ...l, fechaConfirmada: fecha } : l))
+      .then(respondidoAt => {
+        setLineas(ls => ls.map(l => l.id === linea.id ? { ...l, fechaConfirmada: fecha, respondidoAt } : l))
         flashAviso(fecha
           ? `Fecha confirmada por ${linea.proveedorNombre} para la OC ${linea.documentoCompras} pos. ${linea.posicion}: ${fmtDate(fecha)}.`
           : `Se quitó la fecha confirmada de la OC ${linea.documentoCompras} pos. ${linea.posicion}.`)
+      })
+      .catch(e => setError(e.message))
+  }
+
+  // El proveedor contestó sin mover la fecha (o por teléfono): sale de "sin respuesta".
+  const marcarSeleccionRespondida = () => {
+    const ids = [...seleccion]
+    if (!ids.length) return
+    setError(null)
+    marcarRespondido(ids, true)
+      .then(respondidoAt => {
+        setLineas(ls => ls.map(l => seleccion.has(l.id) ? { ...l, respondidoAt } : l))
+        setSeleccion(new Set())
+        flashAviso(`${ids.length} línea${ids.length !== 1 ? 's marcadas' : ' marcada'} como respondida${ids.length !== 1 ? 's' : ''} por el proveedor.`)
       })
       .catch(e => setError(e.message))
   }
@@ -359,12 +442,31 @@ export default function Seguimiento({ isMobile }) {
           <input type="checkbox" checked={soloVencidas} onChange={e => setSoloVencidas(e.target.checked)} />
           {isMobile ? 'Vencidas' : 'Solo vencidas'}
         </label>
+        {/* Lo accionable del día: a quién se le escribió y no ha contestado. */}
+        <label title={`Líneas enviadas hace ${umbral} días o más sin respuesta del proveedor`}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: F, fontSize: 12, color: nSinRespuesta ? '#8F5B00' : C.muted, cursor: 'pointer', userSelect: 'none' }}>
+          <input type="checkbox" checked={soloSinRespuesta} onChange={e => setSoloSinRespuesta(e.target.checked)} />
+          <Clock size={13} />
+          {isMobile ? 'Sin resp.' : 'Sin respuesta'}
+          <span style={{ fontWeight: 700 }}>{nSinRespuesta}</span>
+        </label>
+        {!isMobile && (
+          <select value={umbral} onChange={e => setUmbral(Number(e.target.value))} title="Días sin respuesta a partir de los cuales hay que insistir"
+            style={{ fontFamily: F, fontSize: 12, border: `1px solid ${C.borderInput}`, borderRadius: 8, padding: '6px 8px', outline: 'none', color: C.text, background: C.card }}>
+            {OPCIONES_UMBRAL.map(d => <option key={d} value={d}>+{d} días</option>)}
+          </select>
+        )}
         <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
           onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f); e.target.value = '' }} />
         <Btn onClick={() => fileRef.current?.click()} disabled={importando} title="Cargar el Excel de seguimiento que envía el cliente">
           {importando ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={13} />}
           {isMobile ? '' : 'Subir Excel'}
         </Btn>
+        {seleccion.size > 0 && (
+          <Btn onClick={marcarSeleccionRespondida} title="El proveedor contestó sin cambiar la fecha (o por teléfono)">
+            <CheckCircle2 size={13} />{isMobile ? '' : 'Marcar respondido'}
+          </Btn>
+        )}
         <Btn primary onClick={abrirEmailSeleccion} disabled={!grupoSeleccion} title={tituloEmail}>
           <Mail size={13} />{isMobile ? 'Email' : 'Generar email'}
         </Btn>
@@ -401,10 +503,6 @@ export default function Seguimiento({ isMobile }) {
                     <span style={{ fontFamily: F, fontSize: 12.5, fontWeight: 700, color: C.text, flex: 1, minWidth: 0 }}>
                       {g.nombre} <span style={{ color: C.muted, fontWeight: 400 }}>{g.lineas.length}</span>
                     </span>
-                    <button onClick={() => abrirEmailGrupo(g)} title="Generar email a este proveedor"
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: F, fontSize: 11, fontWeight: 600, color: C.brand, background: C.card, border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '4px 9px', cursor: 'pointer' }}>
-                      <Mail size={12} />Email
-                    </button>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {g.lineas.map(l => {
@@ -416,8 +514,9 @@ export default function Seguimiento({ isMobile }) {
                             {checkbox(seleccion.has(l.id), () => toggle(l.id))}
                             <span style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: C.primary }}>{l.documentoCompras}</span>
                             <span style={{ fontFamily: F, fontSize: 11, color: C.muted }}>pos. {l.posicion}</span>
+                            <span style={{ marginLeft: 'auto' }}><EstadoChip linea={l} umbral={umbral} /></span>
                             {dias > 0 && (
-                              <span style={{ fontFamily: F, fontSize: 10.5, fontWeight: 600, color: C.danger, background: `${C.danger}12`, padding: '1px 8px', borderRadius: 10, marginLeft: 'auto' }}>
+                              <span style={{ fontFamily: F, fontSize: 10.5, fontWeight: 600, color: C.danger, background: `${C.danger}12`, padding: '1px 8px', borderRadius: 10 }}>
                                 {dias} día{dias !== 1 ? 's' : ''} vencida
                               </span>
                             )}
@@ -449,19 +548,20 @@ export default function Seguimiento({ isMobile }) {
             <thead><tr>
               <Th> </Th><Th>OC</Th><Th>Pos</Th><Th>Material</Th><Th>Texto breve</Th><Th>F. documento</Th>
               <Th right>Cantidad</Th><Th>UM</Th><Th right>Valor neto</Th><Th>F. entrega actual</Th>
-              <Th>F. entrega confirmada</Th><Th right>Días venc.</Th><Th>Status</Th>
+              <Th>F. entrega confirmada</Th><Th>Gestión</Th><Th right>Días venc.</Th><Th>Status</Th>
             </tr></thead>
             <tbody>
               {grupos.map(g => {
                 const todos = g.lineas.every(l => seleccion.has(l.id))
                 const email = emails.get(g.clave)
+                const pendientes = g.lineas.filter(l => estadoRespuesta(l, umbral) === 'sin_respuesta').length
                 return [
                   // Cabecera del grupo proveedor
                   <tr key={`g-${g.clave}`} style={{ background: C.bg }}>
                     <Td style={{ borderBottom: `1px solid ${C.border}` }}>
                       {checkbox(todos, () => toggleGrupo(g), 'Seleccionar todo el proveedor')}
                     </Td>
-                    <Td style={{ padding: '7px 10px' }} colSpan={11}>
+                    <Td style={{ padding: '7px 10px' }} colSpan={13}>
                       <span style={{ fontWeight: 700, color: C.text }}>{g.nombre}</span>
                       {g.codigo && <span style={{ color: C.muted, marginLeft: 8, fontSize: 11 }}>{g.codigo}</span>}
                       <span style={{ color: C.muted, marginLeft: 8, fontSize: 11 }}>{g.lineas.length} material{g.lineas.length !== 1 ? 'es' : ''}</span>
@@ -470,12 +570,12 @@ export default function Seguimiento({ isMobile }) {
                           <AtSign size={11} />{email}
                         </span>
                       )}
-                    </Td>
-                    <Td right>
-                      <button onClick={() => abrirEmailGrupo(g)} title="Generar email a este proveedor (selección del grupo, o todo si no hay selección)"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: F, fontSize: 11, fontWeight: 600, color: C.brand, background: C.card, border: `1px solid ${C.borderInput}`, borderRadius: 6, padding: '3px 9px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        <Mail size={12} />Generar email
-                      </button>
+                      {pendientes > 0 && (
+                        <span title={`Se les escribió hace ${umbral} días o más y no han contestado`}
+                          style={{ fontFamily: F, fontSize: 10.5, fontWeight: 600, color: '#8F5B00', background: '#FDF3E7', padding: '2px 8px', borderRadius: 10, marginLeft: 8 }}>
+                          {pendientes} sin respuesta
+                        </span>
+                      )}
                     </Td>
                   </tr>,
                   ...g.lineas.map(l => {
@@ -498,6 +598,7 @@ export default function Seguimiento({ isMobile }) {
                           <DateInp value={l.fechaConfirmada} title="Fecha que confirmó o rectificó el proveedor"
                             onChange={v => confirmarFecha(l, v)} />
                         </Td>
+                        <Td><EstadoChip linea={l} umbral={umbral} /></Td>
                         <Td right style={{ color: dias > 0 ? C.danger : C.muted, fontWeight: dias > 0 ? 600 : 400 }}>
                           {dias > 0 ? dias : '—'}
                         </Td>
@@ -515,7 +616,7 @@ export default function Seguimiento({ isMobile }) {
       {modalEmail && (
         <EmailModal grupo={modalEmail.grupo} lineas={modalEmail.lineas} isMobile={isMobile}
           emailInicial={emails.get(modalEmail.grupo.clave) || ''}
-          onClose={() => setModalEmail(null)} onAviso={flashAviso}
+          onClose={() => setModalEmail(null)} onAviso={flashAviso} onEnviado={trasEnviar}
           onEmailGuardado={(clave, em) => setEmails(m => new Map(m).set(clave, em))} />
       )}
     </div>

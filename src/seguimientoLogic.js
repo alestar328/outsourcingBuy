@@ -57,3 +57,27 @@ export function diasVencidos(l, hoy = hoyISO()) {
 }
 
 export const emailValido = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+
+// ─── Control de respuesta del proveedor ───────────────────────────────────────
+//  Umbral por defecto: 3 días. Los del socio para OCs internas eran 1–2 días
+//  hábiles, pero aquí se pide confirmar un lote de materiales, no un acuse.
+export const UMBRAL_SIN_RESPUESTA_DIAS = 3
+export const OPCIONES_UMBRAL = [2, 3, 5, 7]
+
+// Días transcurridos desde el último correo al proveedor (null si nunca se envió).
+export function diasDesdeEnvio(l, ahora = Date.now()) {
+  if (!l.ultimoEnvioAt) return null
+  return Math.floor((ahora - new Date(l.ultimoEnvioAt)) / 86400000)
+}
+
+// Estado de la gestión con el proveedor, para el semáforo de la lista.
+//   'sin_enviar' → aún no se le ha escrito
+//   'esperando'  → enviado y dentro del umbral
+//   'sin_respuesta' → enviado, sin respuesta y pasado el umbral (lo accionable)
+//   'respondido' → confirmó fecha o se marcó como respondido
+export function estadoRespuesta(l, umbralDias = UMBRAL_SIN_RESPUESTA_DIAS, ahora = Date.now()) {
+  if (l.respondidoAt) return 'respondido'
+  const dias = diasDesdeEnvio(l, ahora)
+  if (dias === null) return 'sin_enviar'
+  return dias >= umbralDias ? 'sin_respuesta' : 'esperando'
+}

@@ -82,7 +82,7 @@ function leerLineas(rows, desde, colDe) {
 
 // ─── Excel por proveedor (adjunto del correo) ─────────────────────────────────
 // Columnas acordadas: solo lo que el proveedor necesita para confirmar fechas.
-export function exportarExcelProveedor({ proveedorNombre, lineas }) {
+function construirWbProveedor({ proveedorNombre, lineas }) {
   const aoa = [[
     'Material', 'Texto breve', 'Fecha documento', 'Proveedor', 'Cantidad de pedido',
     'UM', 'Moneda', 'Valor neto pedido', 'Fecha de entrega actual', 'Fecha de entrega confirmada',
@@ -101,8 +101,23 @@ export function exportarExcelProveedor({ proveedorNombre, lineas }) {
   ]
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Confirmación entregas')
-  const safe = (proveedorNombre || 'proveedor').replace(/[^\w.-]+/g, '_').slice(0, 40)
-  XLSX.writeFile(wb, `MinosERP_Confirmacion_${safe}_${hoyISO()}.xlsx`)
+  return wb
+}
+
+export const nombreArchivoProveedor = proveedorNombre =>
+  `MinosERP_Confirmacion_${(proveedorNombre || 'proveedor').replace(/[^\w.-]+/g, '_').slice(0, 40)}_${hoyISO()}.xlsx`
+
+// Descarga directa (envío manual: el usuario lo adjunta él mismo).
+export function exportarExcelProveedor({ proveedorNombre, lineas }) {
+  XLSX.writeFile(construirWbProveedor({ proveedorNombre, lineas }), nombreArchivoProveedor(proveedorNombre))
+}
+
+// Mismo Excel en base64, para adjuntarlo al correo que envía la Edge Function.
+export function excelProveedorAdjunto({ proveedorNombre, lineas }) {
+  return {
+    filename: nombreArchivoProveedor(proveedorNombre),
+    contenidoBase64: XLSX.write(construirWbProveedor({ proveedorNombre, lineas }), { type: 'base64', bookType: 'xlsx' }),
+  }
 }
 
 // ─── Correo genérico al proveedor ─────────────────────────────────────────────

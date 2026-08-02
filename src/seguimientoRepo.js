@@ -34,6 +34,8 @@ function dbToUI(r) {
     fechaAnterior:       r.fecha_entrega_anterior || '',
     fechaConfirmada:     r.fecha_entrega_confirmada || '',
     status:              r.status || '',
+    ultimoEnvioAt:       r.ultimo_envio_at || '',
+    respondidoAt:        r.respondido_at || '',
   }
 }
 
@@ -125,12 +127,62 @@ export async function importarLineas(lineas) {
 }
 
 // Fecha que el proveedor confirmó o rectificó para una línea (edición inline).
+// Registrar una fecha implica que el proveedor respondió: sella `respondido_at`
+// y la línea deja de contar como pendiente de respuesta.
 export async function confirmarFechaEntrega(id, fecha) {
+  const ahora = new Date().toISOString()
   const { error } = await supabase
     .from('seg_lineas')
-    .update({ fecha_entrega_confirmada: fecha || null, updated_at: new Date().toISOString() })
+    .update({ fecha_entrega_confirmada: fecha || null, respondido_at: fecha ? ahora : null, updated_at: ahora })
     .eq('id', id)
   if (error) throw error
+  return fecha ? ahora : ''
+}
+
+// El proveedor respondió sin cambiar la fecha (o por teléfono): se marca a mano.
+export async function marcarRespondido(ids, respondido = true) {
+  const lista = [...new Set((ids || []).filter(Boolean))]
+  if (!lista.length) return ''
+  const ahora = new Date().toISOString()
+  for (let i = 0; i < lista.length; i += CHUNK) {
+    const { error } = await supabase
+      .from('seg_lineas')
+      .update({ respondido_at: respondido ? ahora : null, updated_at: ahora })
+      .in('id', lista.slice(i, i + CHUNK))
+    if (error) throw error
+  }
+  return respondido ? ahora : ''
+}
+
+// ─── Envío del correo (Edge Function `enviar-correo-proveedor` → Resend) ──────
+// La clave de Resend vive en los secrets del proyecto, nunca en el frontend.
+// La función registra el envío en seg_envios y sella `ultimo_envio_at`.
+export async function enviarCorreoProveedor({ para, asunto, texto, adjunto, proveedor, lineaIds }) {
+  const { data, error } = await supabase.functions.invoke('enviar-correo-proveedor', {
+    body: { para, asunto, texto, adjunto, proveedor, lineaIds },
+  })
+  if (error) {
+    // Un fallo con cuerpo JSON trae el motivo real (Resend, validación, sesión…).
+    let detalle = error.message
+    try { detalle = (await error.context?.json())?.error || detalle } catch { /* sin cuerpo legible */ }
+    throw new Error(detalle)
+  }
+  return data
+}
+
+// Historial de correos enviados a un proveedor (más reciente primero).
+export async function listarEnviosProveedor(codigoONombre) {
+  const { data, error } = await supabase
+    .from('seg_envios')
+    .select('id, email, asunto, n_lineas, estado, error, created_at')
+    .or(`proveedor_codigo.eq.${codigoONombre},proveedor_nombre.eq.${codigoONombre}`)
+    .order('created_at', { ascending: false })
+    .limit(20)
+  if (error) throw error
+  return (data || []).map(e => ({
+    id: e.id, email: e.email, asunto: e.asunto, nLineas: e.n_lineas,
+    estado: e.estado, error: e.error || '', createdAt: e.created_at,
+  }))
 }
 
 // ─── Mini-directorio de emails de proveedor ───────────────────────────────────
