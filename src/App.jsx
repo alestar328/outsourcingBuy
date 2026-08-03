@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import * as XLSX from 'xlsx'
+import XLSX from 'xlsx-js-style'
 import Solped, { CATEGORIAS_SOLPED } from './Solped.jsx'
 import OrdenCompra from './OrdenCompra.jsx'
 import Seguimiento from './Seguimiento.jsx'
+import DashboardSeguimiento from './DashboardSeguimiento.jsx'
 import Login from './Login.jsx'
 import { listarDocumentos } from './solpedRepo.js'
 import {
@@ -728,7 +729,7 @@ function AlertRow({ a, isLast, onClick }) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({ isMobile, onOpenDocumento }) {
+function DashboardSolped({ isMobile, onOpenDocumento }) {
   const P   = isMobile ? '14px 14px' : 24
   const gap = isMobile ? 12 : 16
 
@@ -905,6 +906,51 @@ function Dashboard({ isMobile, onOpenDocumento }) {
               : DETAILS[detailId])
           : null}
         isMobile={isMobile} onClose={() => setDetailId(null)} />
+    </div>
+  )
+}
+
+// ─── DASHBOARD: selector entre las dos variantes ──────────────────────────────
+//  Patrón Fiori de "variantes de página": una sola entrada en el menú y un
+//  selector segmentado que cambia el contenido. Se recuerda la última elección
+//  para que cada quien entre directo al panel que usa a diario.
+const DASH_TABS = [
+  { id: 'solped',      label: 'SOLPEDs',     icon: ClipboardList },
+  { id: 'seguimiento', label: 'Seguimiento', icon: Truck         },
+]
+
+function Dashboard({ isMobile, onOpenDocumento, onNav }) {
+  const [tab, setTab] = useState(() => {
+    try { return localStorage.getItem('minos_dash_tab') || 'solped' } catch { return 'solped' }
+  })
+  const elegir = id => { setTab(id); try { localStorage.setItem('minos_dash_tab', id) } catch { /* modo privado: no persiste */ } }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isMobile ? '10px 14px' : '10px 24px', background: C.card, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ display: 'inline-flex', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: 3, gap: 3 }}>
+          {DASH_TABS.map(({ id, label, icon: Icon }) => {
+            const on = tab === id
+            return (
+              <button key={id} onClick={() => elegir(id)} aria-pressed={on}
+                title={id === 'solped' ? 'Indicadores de SOLPEDs y órdenes' : 'Indicadores de seguimiento de entregas'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600,
+                  background: on ? C.card : 'transparent', color: on ? C.primary : C.muted,
+                  border: `1px solid ${on ? C.border : 'transparent'}`, borderRadius: 7,
+                  padding: isMobile ? '6px 10px' : '6px 14px', cursor: 'pointer',
+                  boxShadow: on ? '0 1px 3px rgba(0,0,0,0.10)' : 'none',
+                }}>
+                <Icon size={14} />{label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      {tab === 'seguimiento'
+        ? <DashboardSeguimiento isMobile={isMobile} onNav={onNav} />
+        : <DashboardSolped isMobile={isMobile} onOpenDocumento={onOpenDocumento} />}
     </div>
   )
 }
@@ -2281,7 +2327,7 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minWidth: 0 }}>
         <Topbar title={title} isMobile={isMobile} viewMode={viewMode} onToggleViewMode={toggleViewMode} onSignOut={signOut} onHelp={() => startProductTour(navTo)} />
         <div className="print-content" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <View isMobile={isMobile} onOpenDocumento={openDocumento}
+          <View isMobile={isMobile} onOpenDocumento={openDocumento} onNav={navTo}
             focusDocId={view === 'solped' ? solpedFocus : null} />
         </div>
         {isMobile && <BottomNav active={view} onNav={navTo} />}

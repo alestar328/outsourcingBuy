@@ -12,7 +12,7 @@
 //  (scripts/generar-maestros-mock.mjs).
 // ══════════════════════════════════════════════════════════════════════════════
 
-import * as XLSX from 'xlsx'
+import XLSX from 'xlsx-js-style'
 
 // ── Cabeceras canónicas (el orden define el de las columnas en el Excel) ────────
 export const PROV_COLUMNS = [

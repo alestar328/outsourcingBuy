@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import * as XLSX from 'xlsx'
+import XLSX from 'xlsx-js-style'
 import { Upload, FileSpreadsheet, RefreshCw, Search, AlertCircle, Pencil, ChevronDown, ChevronRight, ChevronLeft, X, ArrowRight, Table, LayoutGrid, Download, CheckCircle2, Trash2, ClipboardList } from 'lucide-react'
 import SolpedAgrupado from './SolpedAgrupado.jsx'
 import { listarDocumentos, cargarDocumento, guardarDocumento, actualizarCategoriaItem, categoriaPorCodigo, solpedIdDeItem, eliminarDocumento, generarSeleccion, agregarASeleccion, eliminarSeleccion, quitarItemDeSeleccion, seleccionesDeDocumento } from './solpedRepo.js'

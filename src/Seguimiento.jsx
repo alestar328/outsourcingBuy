@@ -11,7 +11,7 @@
 // ══════════════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import * as XLSX from 'xlsx'
+import XLSX from 'xlsx-js-style'
 import {
   listarLineas, importarLineas, confirmarFechaEntrega, marcarRespondido,
   listarEmailsProveedores, guardarEmailProveedor, enviarCorreoProveedor,
@@ -116,8 +116,10 @@ function Modal({ title, subtitle, onClose, children, footer, isMobile, width = 5
 const Th = ({ children, right }) => (
   <th style={{ position: 'sticky', top: 0, background: C.card, zIndex: 1, textAlign: right ? 'right' : 'left', padding: '9px 10px', fontFamily: F, fontSize: 10, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap' }}>{children}</th>
 )
-const Td = ({ children, right, style, onClick }) => (
-  <td onClick={onClick} style={{ padding: '8px 10px', fontFamily: F, fontSize: 12, color: C.text, borderBottom: `1px solid ${C.border}`, textAlign: right ? 'right' : 'left', verticalAlign: 'middle', ...style }}>{children}</td>
+// OJO: `colSpan` debe reenviarse al <td> real; sin esto la cabecera de grupo
+// quedaba encajada en una sola columna en vez de ocupar la fila entera.
+const Td = ({ children, right, style, onClick, colSpan }) => (
+  <td colSpan={colSpan} onClick={onClick} style={{ padding: '8px 10px', fontFamily: F, fontSize: 12, color: C.text, borderBottom: `1px solid ${C.border}`, textAlign: right ? 'right' : 'left', verticalAlign: 'middle', ...style }}>{children}</td>
 )
 
 function Dato({ label, children }) {
@@ -556,12 +558,12 @@ export default function Seguimiento({ isMobile }) {
                 const email = emails.get(g.clave)
                 const pendientes = g.lineas.filter(l => estadoRespuesta(l, umbral) === 'sin_respuesta').length
                 return [
-                  // Cabecera del grupo proveedor
+                  // Cabecera del grupo proveedor: banda que ocupa la fila entera.
                   <tr key={`g-${g.clave}`} style={{ background: C.bg }}>
-                    <Td style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <Td style={{ borderTop: `1px solid ${C.border}`, width: 1 }}>
                       {checkbox(todos, () => toggleGrupo(g), 'Seleccionar todo el proveedor')}
                     </Td>
-                    <Td style={{ padding: '7px 10px' }} colSpan={13}>
+                    <Td style={{ padding: '7px 10px', borderTop: `1px solid ${C.border}`, whiteSpace: 'nowrap' }} colSpan={13}>
                       <span style={{ fontWeight: 700, color: C.text }}>{g.nombre}</span>
                       {g.codigo && <span style={{ color: C.muted, marginLeft: 8, fontSize: 11 }}>{g.codigo}</span>}
                       <span style={{ color: C.muted, marginLeft: 8, fontSize: 11 }}>{g.lineas.length} material{g.lineas.length !== 1 ? 'es' : ''}</span>

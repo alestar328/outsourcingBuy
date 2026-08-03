@@ -9,7 +9,7 @@
 //  · Texto del correo genérico al proveedor (el envío es manual: copiar y pegar).
 // ══════════════════════════════════════════════════════════════════════════════
 
-import * as XLSX from 'xlsx'
+import XLSX from 'xlsx-js-style'
 import { excelDateToISO, partirProveedor, fmtDate, hoyISO } from './seguimientoLogic.js'
 
 // Normaliza una cabecera: minúsculas, sin saltos de línea ni espacios repetidos.
@@ -81,12 +81,49 @@ function leerLineas(rows, desde, colDe) {
 }
 
 // ─── Excel por proveedor (adjunto del correo) ─────────────────────────────────
-// Columnas acordadas: solo lo que el proveedor necesita para confirmar fechas.
+//  Columnas acordadas: solo lo que el proveedor necesita para confirmar fechas.
+//  Este archivo lo abre gente ajena al ERP (y representa a Minos ante el
+//  proveedor), así que va formateado: cabecera de marca, instrucciones visibles
+//  y la única columna que deben rellenar resaltada en ámbar para que no haya duda.
+//  Requiere `xlsx-js-style`: el SheetJS community ignora la propiedad `s`.
+
+const HEX = {
+  brand: '0854A0', shell: '354A5E', blanco: 'FFFFFF',
+  zebra: 'FAFBFC', suave: 'EDEFF1', linea: 'D0D5DA',
+  ambar: 'FFF6E5', ambarTexto: '8F5B00', ambarLinea: 'E3B778',
+  texto: '32363A', muted: '5B6066',
+}
+const FUENTE = 'Calibri'
+const trazo = { style: 'thin', color: { rgb: HEX.linea } }
+const BORDE = { top: trazo, bottom: trazo, left: trazo, right: trazo }
+const relleno = rgb => ({ fill: { fgColor: { rgb } } })
+
+// Definición única de las columnas: título, ancho y cómo se pinta el dato.
+const COLS_PROVEEDOR = [
+  { titulo: 'Material',                    wch: 15 },
+  { titulo: 'Texto breve',                 wch: 46 },
+  { titulo: 'Fecha documento',             wch: 16, centro: true },
+  { titulo: 'Proveedor',                   wch: 34 },
+  { titulo: 'Cantidad de pedido',          wch: 16, numFmt: '#,##0.##' },
+  { titulo: 'UM',                          wch: 7,  centro: true },
+  { titulo: 'Moneda',                      wch: 9,  centro: true },
+  { titulo: 'Valor neto pedido',           wch: 17, numFmt: '#,##0.00' },
+  { titulo: 'Fecha de entrega actual',     wch: 21, centro: true },
+  { titulo: 'Fecha de entrega confirmada', wch: 25, centro: true, editable: true },
+]
+const N_COLS = COLS_PROVEEDOR.length
+const FILA_CABECERA = 3            // 0-based: título, subtítulo, instrucciones, cabecera
+
+// Fila completa (todas las celdas existen) para que bordes y rellenos se pinten.
+const filaAncha = (valor = '') => [valor, ...Array(N_COLS - 1).fill('')]
+
 function construirWbProveedor({ proveedorNombre, lineas }) {
-  const aoa = [[
-    'Material', 'Texto breve', 'Fecha documento', 'Proveedor', 'Cantidad de pedido',
-    'UM', 'Moneda', 'Valor neto pedido', 'Fecha de entrega actual', 'Fecha de entrega confirmada',
-  ]]
+  const aoa = [
+    filaAncha('CONFIRMACIÓN DE FECHAS DE ENTREGA'),
+    filaAncha(`${proveedorNombre} · ${lineas.length} material${lineas.length !== 1 ? 'es' : ''} · Generado el ${fmtDate(hoyISO())}`),
+    filaAncha('Complete la columna «Fecha de entrega confirmada» (dd/mm/aaaa) y devuélvanos este archivo por correo.'),
+    COLS_PROVEEDOR.map(c => c.titulo),
+  ]
   for (const l of lineas) {
     aoa.push([
       l.material || '', l.textoBreve || '', fmtDate(l.fechaDocumento), l.proveedorNombre || proveedorNombre,
@@ -94,11 +131,66 @@ function construirWbProveedor({ proveedorNombre, lineas }) {
       fmtDate(l.fechaActual), fmtDate(l.fechaConfirmada),
     ])
   }
+
   const ws = XLSX.utils.aoa_to_sheet(aoa)
-  ws['!cols'] = [
-    { wch: 14 }, { wch: 44 }, { wch: 14 }, { wch: 34 }, { wch: 15 },
-    { wch: 6 }, { wch: 8 }, { wch: 15 }, { wch: 20 }, { wch: 24 },
-  ]
+  const en = (r, c) => ws[XLSX.utils.encode_cell({ r, c })]
+  const pintar = (r, c, s) => { const cel = en(r, c); if (cel) cel.s = s }
+
+  // ── Bloque de cabecera: título de marca, contexto e instrucción ──
+  ws['!merges'] = [0, 1, 2].map(r => ({ s: { r, c: 0 }, e: { r, c: N_COLS - 1 } }))
+  for (let c = 0; c < N_COLS; c++) {
+    pintar(0, c, {
+      font: { name: FUENTE, sz: 14, bold: true, color: { rgb: HEX.blanco } },
+      ...relleno(HEX.brand),
+      alignment: { horizontal: 'left', vertical: 'center', indent: 1 },
+    })
+    pintar(1, c, {
+      font: { name: FUENTE, sz: 10, color: { rgb: HEX.muted } },
+      ...relleno(HEX.suave),
+      alignment: { horizontal: 'left', vertical: 'center', indent: 1 },
+    })
+    pintar(2, c, {
+      font: { name: FUENTE, sz: 10, bold: true, color: { rgb: HEX.ambarTexto } },
+      ...relleno(HEX.ambar),
+      alignment: { horizontal: 'left', vertical: 'center', indent: 1 },
+      border: { bottom: { style: 'thin', color: { rgb: HEX.ambarLinea } } },
+    })
+    // ── Cabecera de la tabla: fondo oscuro, texto blanco, ajustado ──
+    pintar(FILA_CABECERA, c, {
+      font: { name: FUENTE, sz: 10, bold: true, color: { rgb: HEX.blanco } },
+      ...relleno(HEX.shell),
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      border: BORDE,
+    })
+  }
+
+  // ── Datos: bordes finos, zebra y la columna a rellenar en ámbar ──
+  lineas.forEach((_, i) => {
+    const r = FILA_CABECERA + 1 + i
+    const par = i % 2 === 1
+    COLS_PROVEEDOR.forEach((col, c) => {
+      pintar(r, c, {
+        font: { name: FUENTE, sz: 10, color: { rgb: HEX.texto } },
+        ...relleno(col.editable ? HEX.ambar : par ? HEX.zebra : HEX.blanco),
+        alignment: {
+          horizontal: col.numFmt ? 'right' : col.centro ? 'center' : 'left',
+          vertical: 'center', wrapText: c === 1,
+        },
+        numFmt: col.numFmt,
+        border: col.editable
+          ? { ...BORDE, left: { style: 'medium', color: { rgb: HEX.ambarLinea } }, right: { style: 'medium', color: { rgb: HEX.ambarLinea } } }
+          : BORDE,
+      })
+    })
+  })
+
+  ws['!cols'] = COLS_PROVEEDOR.map(c => ({ wch: c.wch }))
+  ws['!rows'] = [{ hpt: 26 }, { hpt: 17 }, { hpt: 19 }, { hpt: 30 }]
+  // Autofiltro sobre la cabecera: el proveedor puede ordenar por OC o por fecha.
+  ws['!autofilter'] = { ref: XLSX.utils.encode_range({
+    s: { r: FILA_CABECERA, c: 0 }, e: { r: FILA_CABECERA + lineas.length, c: N_COLS - 1 },
+  }) }
+
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Confirmación entregas')
   return wb

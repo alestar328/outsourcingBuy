@@ -8,7 +8,7 @@
 //  el marcador y aplica las correcciones.
 // ══════════════════════════════════════════════════════════════════════════════
 
-import * as XLSX from 'xlsx'
+import XLSX from 'xlsx-js-style'
 
 // Marcador técnico que identifica un Excel generado por el ERP (clave de re-import).
 const MARCADOR = 'ID ERP (no editar)'
